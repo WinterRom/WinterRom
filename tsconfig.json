@@ -1,0 +1,40 @@
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"verbatimModuleSyntax": true,
+		"allowJs": true,
+		"checkJs": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"target": "ES6",
+		"module": "ESNext",
+		"jsx": "preserve", // 对于 Svelte，通常设置为 "preserve"
+		"moduleResolution": "node",
+		"isolatedModules": true,
+		// "types": ["svelte"],
+		"types": ["vite/client", "svelte", "@sveltejs/kit"],
+		// "baseUrl": ".",
+		// "paths": {
+		// 		"$src/*": ["src/*"]
+		// },
+		// "baseUrl": "$",
+		// "paths": {
+		// 	"$/*": ["src/*"]
+		// }
+
+		// "importHelpers": true,
+		// "allowSyntheticDefaultImports": true
+		"useUnknownInCatchVariables": false // 关闭 catch 变量自动转为 unknown
+	},
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"src/**/*.tsx",
+		"src/**/*.svelte"
+	],
+	"exclude": ["node_modules", "**/*.spec.ts"]
+}

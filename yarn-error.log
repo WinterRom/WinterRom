@@ -1,0 +1,70 @@
+Arguments: 
+  D:\Program Files\nodejs\node.exe C:\Users\WinterRom\AppData\Roaming\npm\node_modules\yarn\bin\yarn.js add axios
+
+PATH: 
+  D:\Program Files\Java\jdk-17.0.5\bin;C:\Program Files (x86)\Common Files\Intel\Shared Files\cpp\bin\Intel64;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;d:\Program Files\Git\cmd;C:\\Users\\WinterRom\\AppData\\Roaming\\npm;D:\MongoDB\bin;D:\Program Files\PuTTY\;C:\Program Files (x86)\dotnet\;C:\Program Files (x86)\NetSarang\Xftp 7\;D:\Program Files\TortoiseGit\bin;C:\Users\WinterRom\AppData\Roaming\nvm;D:\Program Files\nodejs;C:\Users\WinterRom\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\WinterRom\AppData\Local\Programs\Python\Python313\;C:\Users\WinterRom\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\WinterRom\AppData\Local\Programs\Python\Python313\;C:\Users\WinterRom\AppData\Local\Microsoft\WindowsApps;d:\Users\WinterRom\AppData\Local\Programs\Microsoft VS Code\bin;node_global;D:\Program Files\JetBrains\WebStorm 2021.2.3\bin;;D:\Program Files\Java\jdk-17.0.5\bin;C:\Users\WinterRom\AppData\Roaming\nvm;D:\Program Files\nodejs;
+
+Yarn version: 
+  1.22.17
+
+Node version: 
+  22.13.0
+
+Platform: 
+  win32 x64
+
+Trace: 
+  Error: connect ECONNREFUSED 100.119.60.251:80
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+
+npm manifest: 
+  {
+  	"name": "ollama-webui-lite",
+  	"version": "0.0.1",
+  	"private": true,
+  	"scripts": {
+  		"dev": "vite dev",
+  		"serve": "vite preview --mode production",
+  		"staging": "vite build --mode staging",
+  		"build:dev": "vite build --mode development",
+  		"build:prod": "vite build --mode production",
+  		"build:stage": "vite build --mode staging",
+  		"start": "vite preview",
+  		"fmt": "npm run prettier:svelte && npm run prettier",
+  		"prettier:svelte": "npx -p prettier@2 -- prettier --plugin-search-dir . --write .",
+  		"prettier": "npx -p prettier@2 -- prettier --write '**/*.{js,css,md,html,json}'"
+  	},
+  	"devDependencies": {
+  		"@sveltejs/adapter-auto": "^2.0.0",
+  		"@sveltejs/adapter-static": "^2.0.3",
+  		"@sveltejs/kit": "^1.20.4",
+  		"@tailwindcss/typography": "^0.5.10",
+  		"autoprefixer": "^10.4.16",
+  		"postcss": "^8.4.31",
+  		"prettier": "^2.8.0",
+  		"prettier-plugin-svelte": "^2.10.1",
+  		"svelte": "^4.0.5",
+  		"tailwindcss": "^3.3.3",
+  		"typescript": "^5.0.0",
+  		"vite": "^4.5.2"
+  	},
+  	"type": "module",
+  	"dependencies": {
+  		"@sveltejs/adapter-node": "^1.3.1",
+  		"file-saver": "^2.0.5",
+  		"highlight.js": "^11.9.0",
+  		"idb": "^7.1.1",
+  		"js-sha256": "^0.10.1",
+  		"katex": "^0.16.9",
+  		"marked": "^9.1.0",
+  		"svelte-french-toast": "^1.2.0",
+  		"tippy.js": "^6.3.7",
+  		"uuid": "^9.0.1"
+  	}
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
