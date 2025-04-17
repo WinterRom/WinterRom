@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { v4 as uuidv4 } from "uuid";
 	import toast from "svelte-french-toast";
-	import { onMount, tick } from "svelte";
+	import { onMount, tick, onDestroy } from "svelte";
 	import { OLLAMA_API_BASE_URL } from "$lib/constants";
 
 	import { convertMessagesToHistory, splitStream } from "$lib/utils";
@@ -14,12 +14,14 @@
 	import Navbar from "$lib/components/layout/Navbar.svelte";
 	import { page } from "$app/stores";
 
+	import Modal from "$lib/components/common/Modal.svelte";
 	let loaded = false;
 	let stopResponseFlag = false;
 	let autoScroll = true;
 	let copyContent: any;
 	// let chatId = $page.params.id;
-	let show: boolean = true; // $settings.showSidebar;
+	let show: boolean = false;
+	let showLeft: boolean = false;
 	let title = "";
 	let prompt = "";
 	console.log("show", show);
@@ -29,6 +31,8 @@
 		messages: {},
 		currentId: null
 	};
+	let windowWidth = 0;
+	$: isMobile = windowWidth <= 768;
 	$: if (copyContent) {
 		prompt = copyContent;
 		tick();
@@ -63,6 +67,22 @@
 		})();
 	}
 
+	function handleResize() {
+		windowWidth = window.innerWidth;
+
+		console.log("isMobile", isMobile);
+		console.log("windowWidth", windowWidth);
+		show = windowWidth > 768;
+	}
+
+	// console.log('show--', show)
+	onMount(async () => {
+		window.addEventListener("resize", handleResize);
+		handleResize(); // 初始化尺寸
+	});
+	onDestroy(() => {
+		window.removeEventListener("resize", handleResize);
+	});
 	//////////////////////////
 	// Web functions
 	//////////////////////////
@@ -576,16 +596,14 @@
 			{stopResponse}
 		/>
 	</div> -->
-	<div class="min-h-screen w-full flex justify-center bgcolor">
+	<!-- <div class="min-h-screen w-full flex justify-center bgcolor">
 		<div class={show ? "sidebar-left" : "hidden-width"}>
 			<Sidebar bind:show />
 		</div>
 
 		<div class=" {show ? 'content-right' : 'show-width-all'}">
 			<div class="nav-bar fixed py-2.5 top-0"><Navbar {title} /></div>
-			<!-- <div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">
-				<ModelSelector bind:selectedModels disabled={messages.length > 0} />
-			</div> -->
+		
 
 			<div class="set-new-margin mt-10 mb-32 w-full flex flex-col">
 				<Messages
@@ -605,5 +623,185 @@
 				{stopResponse}
 			/>
 		</div>
+	</div> -->
+	{#if isMobile}
+		<div class="w-full max-w-[{windowWidth}] pb-[env(safe-area-inset-bottom)]">
+			<div class=" flex h-full undefined flex-col">
+				<div
+					class="w-full bg-white nav-mobile fixed mt-0 z-1000 shrink-0 flex items-center px-3 h-[44px] border-b-[0.5px] border-b-gray-200"
+				>
+					<div
+						class="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg"
+					>
+						<button
+							class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
+							on:click={async () => {
+								console.log(111);
+
+								show = !show;
+								console.log("showLeft", showLeft);
+							}}
+						>
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 16 16"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+								class="w-4 h-4 text-gray-700"
+								data-icon="Menu01"
+								aria-hidden="true"
+								><g id="menu-01"
+									><path
+										id="Icon"
+										d="M2 8H14M2 4H14M2 12H14"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/></g
+								></svg
+							></button
+						>
+					</div>
+					<!-- <div bind:showLeft></div>
+				<Sidebar bind:showLeft /> -->
+					<div class="grow flex justify-center items-center px-3">
+						<div class="flex self-center s-CQzCIXq4wXlR">
+							<div class="self-center mr-3.5 s-CQzCIXq4wXlR">
+								<img
+									src="/favicon.png"
+									alt="favicon"
+									class="w-5 rounded-full s-CQzCIXq4wXlR"
+								/>
+							</div>
+							<div class="self-center font-medium text-sm s-CQzCIXq4wXlR">
+								小助手
+							</div>
+						</div>
+					</div>
+					<div
+						class="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg"
+					>
+						<button
+							class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
+							on:click={async () => {
+								goto("/");
+								await chatId.set(uuidv4());
+							}}
+						>
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 16 16"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+								class="w-4 h-4 text-gray-700"
+								data-icon="Edit05"
+								aria-hidden="true"
+								><g id="edit-05" clip-path="url(#clip0_17249_52683)"
+									><path
+										id="Icon"
+										d="M7.33325 2.66617H4.53325C3.41315 2.66617 2.85309 2.66617 2.42527 2.88415C2.04895 3.0759 1.74299 3.38186 1.55124 3.75819C1.33325 4.18601 1.33325 4.74606 1.33325 5.86617V11.4662C1.33325 12.5863 1.33325 13.1463 1.55124 13.5741C1.74299 13.9505 2.04895 14.2564 2.42527 14.4482C2.85309 14.6662 3.41315 14.6662 4.53325 14.6662H10.1333C11.2534 14.6662 11.8134 14.6662 12.2412 14.4482C12.6176 14.2564 12.9235 13.9505 13.1153 13.5741C13.3333 13.1463 13.3333 12.5863 13.3333 11.4662V8.66617M5.33323 10.6662H6.4496C6.77572 10.6662 6.93878 10.6662 7.09223 10.6293C7.22828 10.5967 7.35834 10.5428 7.47763 10.4697C7.61219 10.3872 7.72749 10.2719 7.95809 10.0413L14.3333 3.66617C14.8855 3.11388 14.8855 2.21845 14.3333 1.66617C13.781 1.11388 12.8855 1.11388 12.3333 1.66617L5.95808 8.04133C5.72747 8.27193 5.61217 8.38723 5.52971 8.52179C5.45661 8.64108 5.40274 8.77114 5.37007 8.90719C5.33323 9.06064 5.33323 9.2237 5.33323 9.54982V10.6662Z"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/></g
+								><defs
+									><clipPath id="clip0_17249_52683"
+										><rect width="16" height="16" fill="white" /></clipPath
+									></defs
+								></svg
+							></button
+						>
+					</div>
+				</div>
+				<div class="set-new-margin mt-10 mb-32 w-full h-full flex flex-col">
+					<Messages
+						bind:history
+						bind:messages
+						bind:autoScroll
+						bind:copyContent
+						{isMobile}
+						{sendPrompt}
+						{regenerateResponse}
+					/>
+					<MessageInput
+						bind:prompt
+						bind:autoScroll
+						{isMobile}
+						{messages}
+						{submitPrompt}
+						{stopResponse}
+					/>
+				</div>
+				<!-- <div class="w-full h-[54px] fixd bottom-0"> -->
+
+				<!-- </div> -->
+				<div />
+			</div>
+			<Modal bind:show>
+				<Sidebar bind:show />
+			</Modal>
+		</div>
+	{:else}
+		<div class="min-h-screen w-full flex justify-center bgcolor">
+			<div class="sidebar-left"><Sidebar bind:show /></div>
+			<div class="content-right">
+				<div class="nav-bar fixed py-2.5 top-0"><Navbar {title} /></div>
+				<!-- <div class=" mx-auto w-full md:px-0 mt-10">
+		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
+	</div> -->
+
+				<div
+					class="set-new-margin {isMobile
+						? ''
+						: 'mt-10'} mb-32 w-full flex flex-col"
+				>
+					<Messages
+						bind:history
+						bind:messages
+						bind:autoScroll
+						bind:copyContent
+						{isMobile}
+						{sendPrompt}
+						{regenerateResponse}
+					/>
+				</div>
+				<MessageInput
+					bind:prompt
+					bind:autoScroll
+					{isMobile}
+					{messages}
+					{submitPrompt}
+					{stopResponse}
+				/>
+			</div>
+			<!-- <div class=" py-2.5 flex flex-col justify-between w-full set-width">
+	<div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">
+		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
 	</div>
+
+	<div class="set-new-margin h-full mt-10 mb-32 w-full flex flex-col">
+		<Messages
+			bind:history
+			bind:messages
+			bind:autoScroll
+			bind:copyContent
+			{sendPrompt}
+			{regenerateResponse}
+		/>
+	</div>
+</div>
+
+<MessageInput
+	bind:prompt
+	bind:autoScroll
+	{messages}
+	{submitPrompt}
+	{stopResponse}
+/> -->
+		</div>
+	{/if}
 {/if}

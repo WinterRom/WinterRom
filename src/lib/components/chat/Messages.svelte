@@ -16,7 +16,7 @@
 
 	export let sendPrompt: Function;
 	export let regenerateResponse: Function;
-
+	export let isMobile: boolean;
 	export let bottomPadding = false;
 	export let autoScroll: any;
 	// export let selectedModels: any;
@@ -446,10 +446,10 @@
 		margin-top: 12px;
 		/* padding-bottom: 12px; */
 	}
-	.user-set-text-align {
-		/* text-align: right; */
+	/* .user-set-text-align {
+		text-align: right;
 		padding-top: 20px;
-	}
+	} */
 	.user-set-img-margin {
 		margin-right: 0;
 		padding-top: 20px;
@@ -470,6 +470,10 @@
 	/* .setp > p {
 		padding: 0 6px;
 	} */
+	.set-mobile-w {
+		margin: 0 3%;
+		width: 94%;
+	}
 </style>
 {#if messages.length == 0}
 	<div class="m-auto text-center max-w-md pb-56 px-2">
@@ -487,7 +491,11 @@
 	</div>
 {:else}
 	{#each messages as message, messageIdx}
-		<div class=" w-full {message.role === 'user' ? '' : 'bgcolora'}  ">
+		<div
+			class=" {isMobile ? 'set-mobile-w' : 'w-full'} {message.role === 'user'
+				? ''
+				: 'bgcolora'}  "
+		>
 			<div
 				class="flex w-full {message.role === 'user'
 					? 'float-right'

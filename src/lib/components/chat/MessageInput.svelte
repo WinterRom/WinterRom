@@ -6,6 +6,7 @@
 
 	export let prompt = "";
 	export let messages: any = [];
+	export let isMobile: boolean;
 	let importFileInputElement: any;
 	let importFiles: any;
 
@@ -68,8 +69,16 @@
 	.set-no-padding {
 		padding: 0;
 	}
+	.set-mobile {
+		width: 96%;
+		margin: 0 2%;
+	}
 </style>
-<div class="fixed bottom-0 set-padding-right content-right">
+<div
+	class="fixed bottom-0 set-padding-right {isMobile
+		? 'set-mobile'
+		: 'content-right'}"
+>
 	<div
 		class="px-2.5 pt-2.5 set-no-padding -mb-0.5 mx-auto inset-x-0 bg-transparent flex justify-center"
 	>
