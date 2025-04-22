@@ -5,6 +5,8 @@
 	"scripts": {
 		"dev": "vite dev ",
 		"build": "vite build",
+		"build:stage": "vite build --mode staging",
+		"build:prod": "vite build --mode production",
 		"fmt": "npm run prettier:svelte && npm run prettier",
 		"prettier:svelte": "npx -p prettier@2 -- prettier --plugin-search-dir . --write .",
 		"prettier": "npx -p prettier@2 -- prettier --write '**/*.{js,css,md,html,json}'"
