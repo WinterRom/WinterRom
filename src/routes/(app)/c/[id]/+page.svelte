@@ -32,7 +32,7 @@
 		currentId: null
 	};
 	let windowWidth = 0;
-	$: isMobile = windowWidth <= 768;
+	$: isMobile = windowWidth <= 1040;
 	$: if (copyContent) {
 		prompt = copyContent;
 		tick();
@@ -72,7 +72,7 @@
 
 		console.log("isMobile", isMobile);
 		console.log("windowWidth", windowWidth);
-		show = windowWidth > 768;
+		show = windowWidth > 1040;
 	}
 
 	// console.log('show--', show)
