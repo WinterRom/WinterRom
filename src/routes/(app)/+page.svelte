@@ -58,14 +58,14 @@
 	}
 	let windowWidth = 0;
 
-	$: isMobile = windowWidth <= 768;
+	$: isMobile = windowWidth <= 1040;
 
 	function handleResize() {
 		windowWidth = window.innerWidth;
 
 		console.log("isMobile", isMobile);
 		console.log("windowWidth", windowWidth);
-		show = windowWidth > 768;
+		show = windowWidth > 1040;
 	}
 
 	// console.log('show--', show)
@@ -177,49 +177,51 @@
 		await tick();
 		window.scrollTo({ top: document.body.scrollHeight });
 
-		const res: any = await fetch(
-			`http://llm.foundersc-inc.com/v1/chat-messages`,
-			{
-				method: "POST",
-				headers: {
-					// "Content-Type": "text/event-stream",
-					// "X-Token": getToken() || "",
-					"Content-Type": "application/json",
-					Accept: "text/event-stream",
-					Authorization: "Bearer app-Pu6zAG33K8oesH4CjlY0WTAn"
-				},
-				body: JSON.stringify({
-					inputs: {},
-					// query: "你好，你是谁？",
-					query: userPrompt,
+		// const res: any = await fetch(
+		// 	`http://llm.foundersc-inc.com/v1/chat-messages`,
+		// 	{
+		// 		method: "POST",
+		// 		headers: {
+		// 			// "Content-Type": "text/event-stream",
+		// 			// "X-Token": getToken() || "",
+		// 			"Content-Type": "application/json",
+		// 			Accept: "text/event-stream",
+		// 			Authorization: "Bearer app-Pu6zAG33K8oesH4CjlY0WTAn"
+		// 		},
+		// 		body: JSON.stringify({
+		// 			inputs: {},
+		// 			// query: "你好，你是谁？",
+		// 			query: userPrompt,
 
-					response_mode: "streaming",
-					user: "abc-123"
-				})
+		// 			response_mode: "streaming",
+		// 			user: "abc-123"
+		// 		})
 
-				// JSON.stringify({ message: userPrompt })
-				// body: JSON.stringify({
-				// 	model: model,
-				// 	messages: messages.map((message: any) => ({
-				// 		role: message.role,
-				// 		content: message.content
-				// 	})),
-				// 	options: {
-				// 		seed: $settings.seed ?? undefined,
-				// 		temperature: $settings.temperature ?? undefined,
-				// 		repeat_penalty: $settings.repeat_penalty ?? undefined,
-				// 		top_k: $settings.top_k ?? undefined,
-				// 		top_p: $settings.top_p ?? undefined,
-				// 		num_ctx: $settings.num_ctx ?? undefined,
-				// 		...($settings.options ?? {})
-				// 	},
-				// 	format: $settings.requestFormat ?? undefined
-				// })
-			}
-		).catch(err => {
-			// console.log(err);
-			return null;
-		});
+		// 		// JSON.stringify({ message: userPrompt })
+		// 		// body: JSON.stringify({
+		// 		// 	model: model,
+		// 		// 	messages: messages.map((message: any) => ({
+		// 		// 		role: message.role,
+		// 		// 		content: message.content
+		// 		// 	})),
+		// 		// 	options: {
+		// 		// 		seed: $settings.seed ?? undefined,
+		// 		// 		temperature: $settings.temperature ?? undefined,
+		// 		// 		repeat_penalty: $settings.repeat_penalty ?? undefined,
+		// 		// 		top_k: $settings.top_k ?? undefined,
+		// 		// 		top_p: $settings.top_p ?? undefined,
+		// 		// 		num_ctx: $settings.num_ctx ?? undefined,
+		// 		// 		...($settings.options ?? {})
+		// 		// 	},
+		// 		// 	format: $settings.requestFormat ?? undefined
+		// 		// })
+		// 	}
+		// ).catch(err => {
+		// 	// console.log(err);
+		// 	return null;
+		// });
+		const res: any = getChat(userPrompt);
+
 		if (!res || !res.ok) {
 			// console.error("Network response was not ok");
 			return null;

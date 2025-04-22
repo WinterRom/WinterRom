@@ -2,12 +2,12 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-03-04 10:25:25
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2025-04-03 10:54:20
+ * @LastEditTime: 2025-04-18 10:29:25
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\stores\permission.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import { goto } from "$app/navigation";
-import { getInfo } from "$lib/api/user";
+import { getInfo, getInfos } from "$lib/api/user";
 import {
 	info,
 	showSettings,
@@ -45,6 +45,7 @@ export const thirdLogin = async (token: string | undefined | null = null) => {
 
 	try {
 		const data: any = await getInfo(token);
+		// const data: any = await getInfos(token);
 		// console.log("data.code", data.code);
 
 		// debugger;

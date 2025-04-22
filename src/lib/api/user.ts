@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-02-27 16:55:15
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2025-03-04 10:22:22
+ * @LastEditTime: 2025-04-18 10:28:52
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\api\user.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -20,12 +20,15 @@ export const getInfo = (data: any) =>
 		method: "post",
 		data
 	});
-// export const getChatModel = {
-// 	getChatModel: () => request.get("/ai/chat", {})
-// };
 
 export const logout = () =>
 	request({
 		url: "/logout",
 		method: "post"
+	});
+export const getInfos = (data: any) =>
+	fetch("https://aiwork-dev.foundersc-inc.com/api/security/info", {
+		method: "POST",
+		body: data
+		// 其他配置...
 	});

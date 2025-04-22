@@ -3,7 +3,7 @@
 	import { openDB, deleteDB } from "idb";
 	import { onMount, tick } from "svelte";
 	import { goto } from "$app/navigation";
-	import { getInfo } from "$lib/api/user";
+	import { getInfo, getInfos } from "$lib/api/user";
 	import {
 		info,
 		showSettings,
