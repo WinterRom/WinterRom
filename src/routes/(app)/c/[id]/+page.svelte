@@ -3,7 +3,7 @@
 	import toast from "svelte-french-toast";
 	import { onMount, tick, onDestroy } from "svelte";
 	import { OLLAMA_API_BASE_URL } from "$lib/constants";
-
+	import { getChat, getChatSSE } from "$lib/api/chat";
 	import { convertMessagesToHistory, splitStream } from "$lib/utils";
 	import { goto } from "$app/navigation";
 	import { models, settings, db, chats, chatId } from "$lib/stores";
@@ -13,6 +13,7 @@
 	import ModelSelector from "$lib/components/chat/ModelSelector.svelte";
 	import Navbar from "$lib/components/layout/Navbar.svelte";
 	import { page } from "$app/stores";
+	import { getConversationMessageList } from "$lib/api/chat";
 
 	import Modal from "$lib/components/common/Modal.svelte";
 	let loaded = false;
@@ -25,7 +26,7 @@
 	let title = "";
 	let prompt = "";
 	console.log("show", show);
-
+	let selectedModels = [""];
 	let messages: any = [];
 	let history: any = {
 		messages: {},
@@ -54,6 +55,8 @@
 	}
 
 	$: if ($page.params.id) {
+		console.log("chat--1-id", $page.params.id);
+
 		(async () => {
 			let chat = await loadChat();
 			console.log("chat--1", chat);
@@ -89,23 +92,26 @@
 
 	const loadChat = async () => {
 		await chatId.set($page.params.id);
-		const chat = await $db.getChatById($chatId);
 
-		if (chat) {
-			console.log("chat-loadChat", chat);
+		const params: any = { conversationId: $page.params.id };
+		const { data } = await getConversationMessageList(params);
+		console.log("params-历史对话框", data);
+
+		if (data) {
+			// console.log("chat-loadChat", chat);
 
 			history =
-				(chat?.history ?? undefined) !== undefined
-					? chat.history
-					: convertMessagesToHistory(chat.messages);
-			title = chat.title;
+				(data?.history ?? undefined) !== undefined
+					? data.history
+					: convertMessagesToHistory(data);
+			// title = chat.title;
 
 			let _settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
-			await settings.set({
-				..._settings,
-				system: chat.system ?? _settings.system,
-				options: chat.options ?? _settings.options
-			});
+			// await settings.set({
+			// 	..._settings,
+			// 	system: chat.system ?? _settings.system,
+			// 	options: chat.options ?? _settings.options
+			// });
 			autoScroll = true;
 
 			await tick();
@@ -114,7 +120,7 @@
 			}
 			await tick();
 
-			return chat;
+			return data;
 		} else {
 			return null;
 		}
@@ -198,138 +204,139 @@
 
 		await tick();
 		window.scrollTo({ top: document.body.scrollHeight });
+		const response: any = await getChat({ message: userPrompt });
 		console.log("responseMessage", responseMessage);
-		const res: any = await fetch(
-			`http://llm.foundersc-inc.com/v1/chat-messages`,
-			{
-				method: "POST",
-				headers: {
-					// "Content-Type": "text/event-stream",
-					// "X-Token": getToken() || "",
-					"Content-Type": "application/json",
-					Accept: "text/event-stream",
-					Authorization: "Bearer app-Pu6zAG33K8oesH4CjlY0WTAn"
-				},
-				body: JSON.stringify({
-					inputs: {},
-					// query: "你好，你是谁？",
-					query: userPrompt,
 
-					response_mode: "streaming",
-					user: "abc-123"
-				})
-			}
-		).catch(err => {
-			// console.log(err);
-			return null;
-		});
-		if (!res || !res.ok) {
-			// console.error("Network response was not ok");
-			return null;
-		}
-		// if (res && res.ok) {
-		const reader: any = res.body
-			.pipeThrough(new TextDecoderStream())
-			.pipeThrough(splitStream("\n"))
-			.getReader();
 		while (true) {
-			const { value, done } = await reader.read();
-			if (done || stopResponseFlag || _chatId !== $chatId) {
+			// let { value, done } = await reader.read();
+			if (stopResponseFlag || _chatId !== $chatId) {
 				responseMessage.done = true;
 				messages = messages;
 				break;
 			}
 			try {
-				let lines = value.split("\n");
+				let lines = response?.data.split("\n");
+				console.log("lines", lines);
+				// debugger;
 				for (const line of lines) {
 					if (line) {
-						// event:ping 非JSON
 						if (line.startsWith("event:")) {
 							continue;
 						}
+						// console.log("line", line);
 						const jsonString = line.replace("data: ", ""); // 去除前缀
+						// 关键过滤逻辑：跳过 event: 开头的行
+
+						// console.log("jsonString", JSON.parse(jsonString));
+						console.log("jsonString", jsonString);
+						// debugger;
 						if (!jsonString) continue; // 跳过空行
 						let data = JSON.parse(jsonString);
+						console.log("data-lins-for", data);
+						console.log("data.event", data.event);
+						if (data.event === "error") {
+							// if (!responseMessage.content) {
+							console.log(111);
+							responseMessage.error = true;
+							responseMessage.done = true;
+							responseMessage.content =
+								"您好，没有您想要的答案呢！可以换个问题问一问呢！";
+							messages = messages;
+							// }
+						}
 						if (responseMessage.content == "" && !data.answer) {
 							continue;
 						} else {
 							let resultString: any;
+							// switch (data.event) {
+							// 	case "message":
+							// 		// 处理消息事件
+							// 		responseMessage.content += data.answer;
+							// 		break;
+							// 	case "node_finished":
+							// 		// 处理节点完成事件
+							// 		// console.log(`节点 ${event.data.node_id} 完成`);
+							// 		break;
+							// 	case "workflow_finished":
+							// 		// 处理工作流完成事件
+							// 		console.log("工作流执行完成");
+							// 		// isStreaming = false;
+							// 		isStreaming = false;
+							// 		responseMessage.done = true;
+							// 		break;
+							// 	// ... 其他事件处理
+							// }
 							if (data.event === "message") {
-								console.log("message", data);
-								responseMessage.content += data.answer;
-								// resultString += data.answer;
-								messages = messages;
-								// const PRINT_SPEED = 50;
+								console.log("data.event ", data.event);
+								// debugger;
+								const PRINT_SPEED = 50;
 								// 自动滚动控制
-								// let autoScroll = true;
-								// const chars = data.answer.split("");
-								// for (const char of chars) {
-								// 	responseMessage.content += char;
-								// 	// console.log("char", char);
-								// 	messages = messages;
-								// 	// ✅ 关键：每次更新都重新渲染完整 Markdown
-								// 	await tick(); // 等待 DOM 更新
+								let autoScroll = true;
+								// 1. 先将 Markdown 解析为完整的 HTML
+								const fullHtml = data.answer;
 
-								// 	// 自动滚动到底部
-								// 	if (autoScroll) {
-								// 		window.scrollTo({
-								// 			top: document.body.scrollHeight,
-								// 			behavior: "smooth"
-								// 		});
-								// 	}
-								// 	// 控制打印速度
-								// 	await new Promise(resolve =>
-								// 		setTimeout(resolve, PRINT_SPEED)
-								// 	);
-								// 	//
-								// }
+								// 2. 标签感知打字机逻辑
+								let i = 0;
+								while (i < fullHtml.length) {
+									if (fullHtml[i] === "<") {
+										// 如果遇到标签，找到标签结束位置，一次性追加整个标签
+										const endTagIndex = fullHtml.indexOf(">", i);
+										if (endTagIndex !== -1) {
+											responseMessage.content += fullHtml.slice(
+												i,
+												endTagIndex + 1
+											);
+											i = endTagIndex + 1;
+											// 标签追加不触发延迟，直接进入下一轮循环检查
+											continue;
+										}
+									}
+
+									// 如果是普通文字，逐字符追加并触发延迟
+									responseMessage.content += fullHtml[i];
+									i++;
+
+									messages = messages;
+									await tick();
+
+									if (autoScroll) {
+										window.scrollTo({
+											top: document.body.scrollHeight,
+											behavior: "smooth"
+										});
+									}
+
+									await new Promise(resolve =>
+										setTimeout(resolve, PRINT_SPEED)
+									);
+								}
+								if (!responseMessage.content) {
+									responseMessage.error = true;
+									responseMessage.done = true;
+									responseMessage.content =
+										"您好，没有您想要的答案呢！可以换个问题问一问呢！";
+									messages = messages;
+								}
+
 								window.requestAnimationFrame(() => {
 									window.scrollTo({
 										top: document.body.scrollHeight,
 										behavior: "smooth"
 									});
 								});
+								// if (!isRendering) {
+								// 	isRendering = true;
+								// 	renderBuffer();
+								// }
+							} else if (data.event === "workflow_finished") {
+								stopResponseFlag = true;
+								responseMessage.done = true;
+								// break;
 							}
 							if ($settings.responseAutoCopy) {
 								copyToClipboard(responseMessage.content);
 							}
 						}
-						// if (data.done == false) {
-						// 	if (
-						// 		responseMessage.content == "" &&
-						// 		data.message.content == "\n"
-						// 	) {
-						// 		continue;
-						// 	} else {
-						// 		responseMessage.content += data.message.content;
-						// 		messages = messages;
-						// 	}
-						// } else {
-						// 	responseMessage.done = true;
-						// 	responseMessage.context = data.context ?? null;
-						// 	responseMessage.info = {
-						// 		total_duration: data.total_duration,
-						// 		load_duration: data.load_duration,
-						// 		sample_count: data.sample_count,
-						// 		sample_duration: data.sample_duration,
-						// 		prompt_eval_count: data.prompt_eval_count,
-						// 		prompt_eval_duration: data.prompt_eval_duration,
-						// 		eval_count: data.eval_count,
-						// 		eval_duration: data.eval_duration
-						// 	};
-						// 	messages = messages;
-
-						// 	// if ($settings.notificationEnabled && !document.hasFocus()) {
-						// 	// 	const notification = new Notification(`Ollama - ${model}`, {
-						// 	// 		body: responseMessage.content,
-						// 	// 		icon: "/favicon.png"
-						// 	// 	});
-						// 	// }
-
-						// 	if ($settings.responseAutoCopy) {
-						// 		copyToClipboard(responseMessage.content);
-						// 	}
-						// }
 					}
 				}
 			} catch (error: any) {
@@ -339,15 +346,13 @@
 				}
 				break;
 			}
-
 			if (autoScroll) {
 				window.scrollTo({ top: document.body.scrollHeight });
 			}
 
 			await $db.updateChatById(_chatId, {
 				title: title === "" ? "新会话" : title,
-				// models: selectedModels,
-				system: $settings.system ?? undefined,
+				models: selectedModels,
 				options: {
 					seed: $settings.seed ?? undefined,
 					temperature: $settings.temperature ?? undefined,
@@ -361,27 +366,6 @@
 				history: history
 			});
 		}
-		// } else {
-		// 	if (res !== null) {
-		// 		const error = await res.json();
-		// 		console.log(error);
-		// 		if ("detail" in error) {
-		// 			toast.error(error.detail);
-		// 			responseMessage.content = error.detail;
-		// 		} else {
-		// 			toast.error(error.error);
-		// 			responseMessage.content = error.error;
-		// 		}
-		// 	} else {
-		// 		toast.error(`Uh-oh! There was an issue connecting to Ollama.`);
-		// 		responseMessage.content = `Uh-oh! There was an issue connecting to Ollama.`;
-		// 	}
-
-		// 	responseMessage.error = true;
-		// 	responseMessage.content = `Uh-oh! There was an issue connecting to Ollama.`;
-		// 	responseMessage.done = true;
-		// 	messages = messages;
-		// }
 
 		stopResponseFlag = false;
 		await tick();
@@ -391,7 +375,7 @@
 
 		if (messages.length == 2 && messages.at(1).content !== "") {
 			window.history.replaceState(history.state, "", `/c/${_chatId}`);
-			await generateChatTitle(_chatId, userPrompt);
+			// await generateChatTitle(_chatId, userPrompt);
 		}
 	};
 
@@ -676,7 +660,7 @@
 								/>
 							</div>
 							<div class="self-center font-medium text-sm s-CQzCIXq4wXlR">
-								小助手
+								小C+
 							</div>
 						</div>
 					</div>

@@ -9,7 +9,19 @@
 	src: url("/assets/fonts/Mona-Sans.woff2");
 	font-display: swap;
 }
-
+a {
+	text-decoration: none !important;
+}
+a[target="_blank"] {
+	color: #004eeb; /* 蓝色链接 */
+	/*  text-decoration: underline; 添加下划线 */
+}
+ul,
+li {
+	list-style-type: none; /* 去掉默认样式 */
+	padding: 0; /* 去掉内边距 */
+	margin: 0; /* 去掉外边距 */
+}
 html {
 	word-break: break-word;
 }

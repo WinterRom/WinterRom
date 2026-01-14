@@ -9,26 +9,32 @@
 	export let isMobile: boolean;
 	let importFileInputElement: any;
 	let importFiles: any;
-
+	import toast from "svelte-french-toast";
 	$: if (importFiles) {
-		let reader = new FileReader();
-		// reader.onload = (event) => {
-		// 	let chats = JSON.parse(event.target.result);
-		// 	console.log(chats);
-		// 	importChats(chats);
-		// };
-		// var file = document.getElementById('fileInput').files[0];
 		const formData = new FormData();
 		formData.append("file", importFiles[0]);
+		formData.append("prompt", prompt); // 将当前输入框内容也一起上传
 
-		fetch("http://127.0.0.1:11434/api/upload", {
-			method: "POST",
-			body: formData
-		})
-			.then(response => response.text())
-			.then(data => console.log("files", data))
-			.catch(error => console.error("Error:", error));
-		reader.readAsText(importFiles[0]);
+		// 显示上传状态
+		toast.loading("正在上传文件...");
+
+		try {
+			// const response = await fetch("/api/upload", {
+			// 	method: "POST",
+			// 	body: formData
+			// });
+			// if (response.ok) {
+			// 	const result = await response.json();
+			// 	toast.success("文件上传成功");
+			// 	// 将文件内容自动填充到输入框
+			// 	prompt = result.text || prompt;
+			// } else {
+			// 	throw new Error("上传失败");
+			// }
+		} catch (error) {
+			console.error("上传错误:", error);
+			toast.error("文件上传失败");
+		}
 	}
 	// const importChats = async (chatHistory) => {
 	// 	await $db.addChats(chatHistory);
@@ -123,7 +129,7 @@
 						<textarea
 							id="chat-textarea"
 							class=" dark:bg-gray-800 dark:text-gray-100 outline-none w-full py-3 px-2 pl-4 rounded-xl resize-none"
-							placeholder="Send a message"
+							placeholder="小C+，您的智能助手！快开始和我的聊天吧！"
 							bind:value={prompt}
 							on:keypress={e => keyBoardDown(e)}
 							rows="1"
@@ -132,6 +138,32 @@
 
 						<div class="self-end mb-2 flex space-x-0.5 mr-2">
 							{#if messages.length == 0 || messages.at(-1).done == true}
+								<button
+									type="button"
+									class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1 mr-0.5 w-7 h-7 self-center"
+									on:click={() => importFileInputElement.click()}
+									title="上传文件"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										class="w-5 h-5"
+									>
+										<path
+											fill-rule="evenodd"
+											d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z"
+											clip-rule="evenodd"
+										/>
+									</svg>
+								</button>
+								<input
+									type="file"
+									bind:this={importFileInputElement}
+									class="hidden"
+									bind:files={importFiles}
+									accept=".txt,.pdf,.doc,.docx,.xls,.xlsx"
+								/>
 								<button
 									class="{prompt !== ''
 										? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '

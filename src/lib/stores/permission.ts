@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-03-04 10:25:25
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2025-04-18 10:29:25
+ * @LastEditTime: 2026-01-09 13:42:06
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\stores\permission.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -21,7 +21,7 @@ import {
 } from "$lib/stores";
 import { getToken, setToken, removeToken } from "$lib/utils/cookie";
 import toast from "svelte-french-toast";
-const redirectUrl: any = import.meta.env.VITE_API_REDIRECT_URL;
+const redirectUrl: any = import.meta.env.VITE_APP_SSO_REDIRECT_URL;
 import { logout } from "$lib/api/user";
 
 export const thirdLogin = async (token: string | undefined | null = null) => {
@@ -39,6 +39,8 @@ export const thirdLogin = async (token: string | undefined | null = null) => {
 	// debugger;
 	if (!token) {
 		showToast("登陆失败");
+		console.log("登陆失败", goto(redirectUrl), redirectUrl);
+		goto(redirectUrl);
 		redirectToSSO();
 		return;
 	}
@@ -88,8 +90,9 @@ const redirectToSSO = () => {
 };
 
 const clearTokenAndRedirect = () => {
-	logout();
 	removeToken();
+	logout();
+
 	redirectToSSO();
 };
 const clearTokenLocalStorage = () => {

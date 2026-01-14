@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>小助手</title>
+	<title>小C+</title>
 </svelte:head>
 
 <Toaster />

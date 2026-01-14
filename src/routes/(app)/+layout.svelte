@@ -24,11 +24,16 @@
 	import tools from "$lib/utils/tools";
 	import { thirdLogin } from "$lib/stores/permission";
 	import { get } from "svelte/store";
-	const redirectUrl: any = import.meta.env.VITE_API_REDIRECT_URL;
+	const redirectUrl: any = import.meta.env.VITE_APP_SSO_REDIRECT_URL;
 	let requiredOllamaVersion = "0.1.16";
 	let loaded = false;
 	let tokens: any = "";
 	onMount(async () => {
+		// if (import.meta.env.MODE === "development") {
+		// }
+		// console.log("import.meta.env", import.meta.env);
+
+		// debugger;
 		await settings.set(JSON.parse(localStorage.getItem("settings") ?? "{}"));
 		let _db = await getDB();
 		await db.set(_db);
@@ -43,6 +48,7 @@
 		if (token || getToken()) {
 			loaded = true;
 		}
+
 		// console.log("get", get(userName));
 		// debugger;
 	});

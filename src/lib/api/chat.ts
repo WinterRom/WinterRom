@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-03-04 10:22:31
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2025-04-17 10:28:30
+ * @LastEditTime: 2026-01-14 09:17:32
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\api\chat.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -13,6 +13,45 @@ export const getChat = (data: any) =>
 	request({
 		url: "/difyApi/chatMessages",
 		method: "get",
+		headers: {
+			// Authorization: "Bearer app-Pu6zAG33K8oesH4CjlY0WTAn",
+			Accept: "text/event-stream"
+		},
+		params: data
+	});
+// 停止响应
+export const stopChat = (data: any) =>
+	request({
+		url: "/difyApi/stop",
+		method: "post",
+		data
+	});
+// 获取对话列表
+export const getChatList = (data: any = {}) =>
+	request({
+		url: "/difyApi/conversations",
+		method: "post",
+		data
+	});
+// 修改对话名
+export const updateChatName = (data: any) =>
+	request({
+		url: "/difyApi/updateName",
+		method: "post",
+		data
+	});
+// 删除对话
+export const deleteConversation = (data: any) =>
+	request({
+		url: "/difyApi/deleteConversations",
+		method: "post",
+		data
+	});
+// 获取会话消息列表
+export const getConversationMessageList = (data: any) =>
+	request({
+		url: "/difyApi/getMessages",
+		method: "post",
 		data
 	});
 export const getChatSSE = async (data: any, onData: (data: string) => void) => {

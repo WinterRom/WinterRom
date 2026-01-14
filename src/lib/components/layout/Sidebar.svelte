@@ -1,5 +1,12 @@
 <script lang="ts">
 	import { v4 as uuidv4 } from "uuid";
+	const redirectUrl: any = import.meta.env.VITE_APP_SSO_REDIRECT_URL;
+	import {
+		getChat,
+		updateChatName,
+		deleteConversation,
+		getChatList
+	} from "$lib/api/chat";
 
 	import fileSaver from "file-saver";
 	const { saveAs } = fileSaver;
@@ -7,7 +14,8 @@
 	import { goto } from "$app/navigation";
 	import { db, chats, showSettings, chatId } from "$lib/stores";
 	import { onMount, tick } from "svelte";
-
+	import { get } from "svelte/store";
+	import { userInfor, userName } from "$lib/stores";
 	export let show = false;
 	let navElement;
 	let importFileInputElement: any;
@@ -16,35 +24,54 @@
 	let title: string = "新小C";
 	let search = "";
 
-	let chatDeleteId: any = null;
+	let chatDeleteId: string = "";
 
-	let chatTitleEditId: any = null;
+	let chatTitleEditId: any = "";
 	let chatTitle = "";
-
+	let chatList: any = [];
 	let showDeleteHistoryConfirm = false;
+	let userNames: string = "";
 
 	onMount(async () => {
 		if (window.innerWidth > 1280) {
 			show = true;
 		}
-
-		await chats.set(await $db.getChats());
+		getChatConversationsList();
+		// await chats.set(await $db.getChats());
 	});
-
+	$: if ($userName) {
+		userNames = get(userName);
+	}
+	const getChatConversationsList = async () => {
+		const { data } = await getChatList();
+		console.log("conversationsList", data);
+		chatList = data;
+		// let data = JSON.parse(conversationsList);
+		console.log("conversationsList", data);
+		// console.log("data-getChatConversationsList", data);
+	};
 	const loadChat = async (id: any) => {
+		console.log("id-loadChat", id);
+
 		goto(`/c/${id}`);
 	};
 
-	const editChatTitle = async (id: any, _title: any) => {
-		await $db.updateChatById(id, {
-			title: _title
-		});
-		title = _title;
+	const editChatTitle = async (id: any, name: any) => {
+		const query: any = {
+			name: name,
+			conversationId: id
+		};
+		const { data } = await updateChatName(query);
+		console.log("editChatTitle", data);
+		getChatConversationsList();
+		chatTitle = "";
 	};
 
 	const deleteChat = async (id: any) => {
-		goto("/");
-		$db.deleteChatById(id);
+		const { data } = await deleteConversation({ conversationId: id });
+		console.log("data-deleteChat", data);
+		getChatConversationsList();
+		// goto("/");
 	};
 
 	const deleteChatHistory = async () => {
@@ -121,6 +148,7 @@
         "
 >
 	<div class="py-2.5 my-auto flex flex-col justify-between h-screen">
+		<!--小c+-->
 		<div class="px-2.5 flex justify-center space-x-2">
 			<button
 				class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover transition"
@@ -133,35 +161,11 @@
 					<div class="self-center mr-3.5">
 						<img src="/favicon.png" alt="favicon" class=" w-5 rounded-full" />
 					</div>
-
-					<div class=" self-center font-medium text-sm">小助手</div>
-					<!-- <div class="px-2.5"> -->
-					<!-- <hr class=" border-gray-800 mb-2 w-full" /> -->
-
-					<!-- <div class="flex flex-col"> -->
-
-					<!-- </div> -->
-					<!-- </div> -->
+					<div class=" self-center font-medium text-sm">小C+</div>
 				</div>
-
-				<!-- <div class="self-center">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						viewBox="0 0 20 20"
-						fill="currentColor"
-						class="w-4 h-4"
-					>
-						<path
-							d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"
-						/>
-						<path
-							d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"
-						/>
-					</svg>
-				</div> -->
 			</button>
 		</div>
-
+		<!--新对话-->
 		<div class="px-2.5 flex justify-center space-x-2">
 			<button
 				class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover:bg-gray-1000 transition set-bg-boder"
@@ -211,13 +215,13 @@
 			</button>
 		</div>
 		<div class="px-2.5 mt-1 mb-2 flex justify-star">
-			<input
+			<!-- <input
 				bind:this={importFileInputElement}
 				bind:files={importFiles}
 				type="file"
 				hidden
-			/>
-			<button
+			/> -->
+			<!-- <button
 				class=" rounded-md hover:bg-gray-1000 transition"
 				on:click={() => {
 					importFileInputElement.click();
@@ -240,9 +244,9 @@
 						/>
 					</svg>
 				</div>
-				<!-- <div class=" self-center">Import</div> -->
-			</button>
-			<button
+				
+			</button> -->
+			<!-- <button
 				class="  rounded-md hover:bg-gray-1000 transition"
 				on:click={() => {
 					exportChats();
@@ -264,9 +268,9 @@
 						/>
 					</svg>
 				</div>
-				<!-- <div class=" self-center">Export</div> -->
-			</button>
-			{#if showDeleteHistoryConfirm}
+			</button> -->
+			<!--删除-->
+			<!-- {#if showDeleteHistoryConfirm}
 				<div
 					class="flex justify-between rounded-md items-center py-3 px-3.5 w-full transition"
 				>
@@ -351,10 +355,11 @@
 							/>
 						</svg>
 					</div>
-					<!-- <span>Clear conversations</span> -->
+				
 				</button>
-			{/if}
+			{/if} -->
 		</div>
+		<!--搜索-->
 		<div
 			class="px-2.5 mt-1 mb-2 flex justify-center space-x-2 set-boder-radius"
 		>
@@ -386,12 +391,12 @@
 
 		<div class="pl-2.5 my-2 flex-1 flex flex-col space-y-1 overflow-y-auto">
 			<!--@ts-ignore-->
-			{#each $chats.filter(// @ts-ignore
+			{#each chatList.filter(// @ts-ignore
 				chat => {
 					if (search === "") {
 						return true;
 					} else {
-						let title = chat.title.toLowerCase();
+						let title = chat.name.toLowerCase();
 
 						if (title.includes(search)) {
 							return true;
@@ -402,18 +407,20 @@
 				}) as chat, i}
 				<div class=" w-full pr-2 relative">
 					<button
-						class=" w-full flex justify-between rounded-md px-3 py-2 hover:bg-gray-1000 hover:900bg-gray- {chat.id ===
-						$chatId
-							? 'bg-gray-1050'
-							: ''} transition whitespace-nowrap text-ellipsis"
+						class=" w-full flex justify-between rounded-md px-3 py-2 hover:bg-gray-1000 hover:900bg-gray- {chat.id
+							? ''
+							: 'bg-gray-1050'} transition whitespace-nowrap text-ellipsis"
 						on:click={() => {
 							// goto(`/c/${chat.id}`);
 							if (chat.id !== chatTitleEditId) {
-								chatTitleEditId = null;
+								chatTitleEditId = "";
 								chatTitle = "";
 							}
+							console.log("chatTitleEditId", chatTitleEditId);
 
-							if (chat.id !== $chatId) {
+							if (chat.id && !chatTitleEditId) {
+								console.log(111);
+
 								loadChat(chat.id);
 							}
 						}}
@@ -436,10 +443,9 @@
 								</svg>
 							</div>
 							<div
-								class=" text-left self-center overflow-hidden {chat.id ===
-								$chatId
-									? 'w-[120px]'
-									: 'w-[180px]'} "
+								class=" text-left self-center overflow-hidden {chat.id
+									? 'w-[180px]'
+									: 'w-[120px]'} "
 							>
 								{#if chatTitleEditId === chat.id}
 									<input
@@ -447,22 +453,24 @@
 										class=" bg-transparent w-full"
 									/>
 								{:else}
-									{chat.title}
+									{chat.name}
 								{/if}
 							</div>
 						</div>
 					</button>
 
-					{#if chat.id === $chatId}
+					{#if chat.id}
 						<div class=" absolute right-[22px] top-[10px]">
 							{#if chatTitleEditId === chat.id}
 								<div class="flex self-center space-x-1.5">
 									<button
 										class=" self-center hover:text-customBlue transition"
 										on:click={() => {
+											console.log("chatTitleEditId", chatTitleEditId);
+
 											editChatTitle(chat.id, chatTitle);
-											chatTitleEditId = null;
-											chatTitle = "";
+											chatTitleEditId = "";
+											chat.name = "";
 										}}
 									>
 										<svg
@@ -481,7 +489,7 @@
 									<button
 										class=" self-center hover:text-customRed transition"
 										on:click={() => {
-											chatTitleEditId = null;
+											chatTitleEditId = "";
 											chatTitle = "";
 										}}
 									>
@@ -521,7 +529,7 @@
 									<button
 										class=" self-center hover:text-customRed transition"
 										on:click={() => {
-											chatDeleteId = null;
+											chatDeleteId = "";
 										}}
 									>
 										<svg
@@ -541,7 +549,7 @@
 									<button
 										class=" self-center hover:text-customBlue transition"
 										on:click={() => {
-											chatTitle = chat.title;
+											chatTitle = chat.name;
 											chatTitleEditId = chat.id;
 											// editChatTitle(chat.id, 'a');
 										}}
@@ -589,7 +597,42 @@
 				</div>
 			{/each}
 		</div>
+		<!--用户-->
+		<div class="px-2.5 flex justify-center space-x-2">
+			<div
+				class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover transition"
+			>
+				<div class="flex self-center">
+					<div class="self-center mr-3.5">
+						<!-- <img src="/favicon.png" alt="favicon" class=" w-5 rounded-full" /> -->
+						<img
+							src="/user.png"
+							class=" max-w-[28px] object-cover rounded-full"
+							alt="User profile"
+							draggable="false"
+						/>
+					</div>
 
+					<div class=" self-center font-medium text-sm">
+						{#if userNames}
+							<div>
+								{userNames}
+							</div>
+						{:else}
+							<button
+								class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover transition"
+								on:click={async () => {
+									await goto(redirectUrl);
+								}}>请登录</button
+							>
+							<!-- <span class=" text-gray-500 text-sm font-medium"
+									>{message.model ? ` ${message.model}` : ""}</span
+								> -->
+						{/if}
+					</div>
+				</div>
+			</div>
+		</div>
 		<!-- <div class="px-2.5">
 			<hr class=" border-gray-800 mb-2 w-full" />
 

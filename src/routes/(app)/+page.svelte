@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { marked } from "marked";
 	import { v4 as uuidv4 } from "uuid";
 	import toast from "svelte-french-toast";
 	import { getInfo } from "$lib/api/user";
-	import { getChat, getChatSSE } from "$lib/api/chat";
+	import { getChat, getChatSSE, stopChat, getChatList } from "$lib/api/chat";
 	import { OLLAMA_API_BASE_URL } from "$lib/constants";
 	import { onMount, tick, onDestroy } from "svelte";
 	import { splitStream } from "$lib/utils";
@@ -36,7 +37,9 @@
 	let isLoading = false;
 	let error = null;
 	let newChat: HTMLElement;
-
+	let isStreaming = false;
+	let stopChatTaskId = "";
+	let conversationId: string = "";
 	$: if (copyContent) {
 		prompt = copyContent;
 		tick();
@@ -77,6 +80,7 @@
 		});
 		window.addEventListener("resize", handleResize);
 		handleResize(); // 初始化尺寸
+		// getChatConversationsList();
 	});
 	onDestroy(() => {
 		window.removeEventListener("resize", handleResize);
@@ -85,7 +89,12 @@
 	//////////////////////////
 	// Web functions
 	//////////////////////////
-
+	const getChatConversationsList = async () => {
+		const conversationsList: any = await getChatList();
+		// let data = JSON.parse(conversationsList);
+		console.log("conversationsList", conversationsList);
+		// console.log("data-getChatConversationsList", data);
+	};
 	const initNewChat = async () => {
 		autoScroll = true;
 
@@ -112,16 +121,13 @@
 			textArea.style.top = "0";
 			textArea.style.left = "0";
 			textArea.style.position = "fixed";
-
 			document.body.appendChild(textArea);
 			textArea.focus();
 			textArea.select();
-
 			try {
 				var successful = document.execCommand("copy");
 				var msg = successful ? "successful" : "unsuccessful";
 			} catch (err) {}
-
 			document.body.removeChild(textArea);
 			return;
 		}
@@ -144,7 +150,7 @@
 			})
 		);
 
-		await chats.set(await $db.getChats());
+		// await chats.set(await $db.getChats());
 	};
 
 	const sendPromptOllama = async (
@@ -153,6 +159,7 @@
 		parentId: any,
 		_chatId: any
 	) => {
+		isStreaming = true;
 		console.log("sendPromptOllama");
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
@@ -176,76 +183,21 @@
 
 		await tick();
 		window.scrollTo({ top: document.body.scrollHeight });
-
-		// const res: any = await fetch(
-		// 	`http://llm.foundersc-inc.com/v1/chat-messages`,
-		// 	{
-		// 		method: "POST",
-		// 		headers: {
-		// 			// "Content-Type": "text/event-stream",
-		// 			// "X-Token": getToken() || "",
-		// 			"Content-Type": "application/json",
-		// 			Accept: "text/event-stream",
-		// 			Authorization: "Bearer app-Pu6zAG33K8oesH4CjlY0WTAn"
-		// 		},
-		// 		body: JSON.stringify({
-		// 			inputs: {},
-		// 			// query: "你好，你是谁？",
-		// 			query: userPrompt,
-
-		// 			response_mode: "streaming",
-		// 			user: "abc-123"
-		// 		})
-
-		// 		// JSON.stringify({ message: userPrompt })
-		// 		// body: JSON.stringify({
-		// 		// 	model: model,
-		// 		// 	messages: messages.map((message: any) => ({
-		// 		// 		role: message.role,
-		// 		// 		content: message.content
-		// 		// 	})),
-		// 		// 	options: {
-		// 		// 		seed: $settings.seed ?? undefined,
-		// 		// 		temperature: $settings.temperature ?? undefined,
-		// 		// 		repeat_penalty: $settings.repeat_penalty ?? undefined,
-		// 		// 		top_k: $settings.top_k ?? undefined,
-		// 		// 		top_p: $settings.top_p ?? undefined,
-		// 		// 		num_ctx: $settings.num_ctx ?? undefined,
-		// 		// 		...($settings.options ?? {})
-		// 		// 	},
-		// 		// 	format: $settings.requestFormat ?? undefined
-		// 		// })
-		// 	}
-		// ).catch(err => {
-		// 	// console.log(err);
-		// 	return null;
-		// });
-		const res: any = getChat(userPrompt);
-
-		if (!res || !res.ok) {
-			// console.error("Network response was not ok");
-			return null;
-		}
-
-		const reader = res.body
-			.pipeThrough(new TextDecoderStream())
-			.pipeThrough(splitStream("\n"))
-			.getReader();
-
-		// const reader = res.body
-		// 	.pipeThrough(new TextDecoderStream())
-		// 	.pipeThrough(splitStream("\n"))
-		// 	.getReader();
+		const response: any = await getChat({
+			message: userPrompt,
+			conversationId: conversationId
+		});
 		while (true) {
-			let { value, done } = await reader.read();
-			if (done || stopResponseFlag || _chatId !== $chatId) {
+			// let { value, done } = await reader.read();
+			if (stopResponseFlag || _chatId !== $chatId) {
 				responseMessage.done = true;
 				messages = messages;
 				break;
 			}
 			try {
-				let lines = value.split("\n");
-
+				let lines = response?.data.split("\n");
+				console.log("lines", lines);
+				// debugger;
 				for (const line of lines) {
 					if (line) {
 						if (line.startsWith("event:")) {
@@ -254,13 +206,20 @@
 						// console.log("line", line);
 						const jsonString = line.replace("data: ", ""); // 去除前缀
 						// 关键过滤逻辑：跳过 event: 开头的行
-
 						// console.log("jsonString", JSON.parse(jsonString));
-						// console.log("jsonString", jsonString);
+						console.log("jsonString", jsonString);
+						// debugger;
 						if (!jsonString) continue; // 跳过空行
 						let data = JSON.parse(jsonString);
-						console.log("data", data);
+						console.log("data-lins-for", data);
 						console.log("data.event", data.event);
+						console.log("conversationId", conversationId);
+						if (data.event === "workflow_started") {
+							console.log("data.event", data.task_id);
+							stopChatTaskId = data.task_id;
+							conversationId = data.conversation_id;
+							messages.at(-1).done = false;
+						}
 						if (data.event === "error") {
 							// if (!responseMessage.content) {
 							console.log(111);
@@ -275,11 +234,65 @@
 							continue;
 						} else {
 							let resultString: any;
-
+							// switch (data.event) {
+							// 	case "message":
+							// 		// 处理消息事件
+							// 		responseMessage.content += data.answer;
+							// 		break;
+							// 	case "node_finished":
+							// 		// 处理节点完成事件
+							// 		// console.log(`节点 ${event.data.node_id} 完成`);
+							// 		break;
+							// 	case "workflow_finished":
+							// 		// 处理工作流完成事件
+							// 		console.log("工作流执行完成");
+							// 		// isStreaming = false;
+							// 		isStreaming = false;
+							// 		responseMessage.done = true;
+							// 		break;
+							// 	// ... 其他事件处理
+							// }
 							if (data.event === "message") {
-								responseMessage.content += data.answer;
-								// resultString += data.answer;
-								messages = messages;
+								console.log("data.event ", data.event);
+								// debugger;
+								const PRINT_SPEED = 50;
+								// 自动滚动控制
+								let autoScroll = true;
+								// 1. 先将 Markdown 解析为完整的 HTML
+								const fullHtml = data.answer;
+								// 2. 标签感知打字机逻辑
+								let i = 0;
+								while (i < fullHtml.length) {
+									if (fullHtml[i] === "<") {
+										// 如果遇到标签，找到标签结束位置，一次性追加整个标签
+										const endTagIndex = fullHtml.indexOf(">", i);
+										if (endTagIndex !== -1) {
+											responseMessage.content += fullHtml.slice(
+												i,
+												endTagIndex + 1
+											);
+											i = endTagIndex + 1;
+											// 标签追加不触发延迟，直接进入下一轮循环检查
+											continue;
+										}
+									}
+									// 如果是普通文字，逐字符追加并触发延迟
+									responseMessage.content += fullHtml[i];
+									i++;
+									messages = messages;
+									await tick();
+
+									if (autoScroll) {
+										window.scrollTo({
+											top: document.body.scrollHeight,
+											behavior: "smooth"
+										});
+									}
+
+									await new Promise(resolve =>
+										setTimeout(resolve, PRINT_SPEED)
+									);
+								}
 								if (!responseMessage.content) {
 									responseMessage.error = true;
 									responseMessage.done = true;
@@ -287,32 +300,6 @@
 										"您好，没有您想要的答案呢！可以换个问题问一问呢！";
 									messages = messages;
 								}
-								// const PRINT_SPEED = 50;
-
-								// 自动滚动控制
-								// let autoScroll = true;
-								// const chars = data.answer.split("");
-								// for (const char of chars) {
-								// 	responseMessage.content += char;
-								// 	// console.log("char", char);
-								// 	messages = messages;
-								// 	// ✅ 关键：每次更新都重新渲染完整 Markdown
-								// 	await tick(); // 等待 DOM 更新
-
-								// 	// 自动滚动到底部
-								// 	if (autoScroll) {
-								// 		window.scrollTo({
-								// 			top: document.body.scrollHeight,
-								// 			behavior: "smooth"
-								// 		});
-								// 	}
-
-								// 	// 控制打印速度
-								// 	await new Promise(resolve =>
-								// 		setTimeout(resolve, PRINT_SPEED)
-								// 	);
-								// 	//
-								// }
 
 								window.requestAnimationFrame(() => {
 									window.scrollTo({
@@ -324,6 +311,11 @@
 								// 	isRendering = true;
 								// 	renderBuffer();
 								// }
+							} else if (data.event === "workflow_finished") {
+								stopResponseFlag = true;
+								responseMessage.done = true;
+								messages.at(-1).done = true;
+								// break;
 							}
 							if ($settings.responseAutoCopy) {
 								copyToClipboard(responseMessage.content);
@@ -366,37 +358,9 @@
 
 		if (messages.length == 2 && messages.at(1).content !== "") {
 			window.history.replaceState(history.state, "", `/c/${_chatId}`);
-			await generateChatTitle(_chatId, userPrompt);
 		}
 	};
-	// const renderBuffer = async(content:any) =>{
-	// 	 // 打印速度（字符/毫秒）
-	// 	 const PRINT_SPEED = 50;
-
-	//   // 自动滚动控制
-	//   let autoScroll = true;
-	//   const chars = content.split("");
-	//   for (const char of chars) {
-	// 	responseMessage.content  += char;
-
-	//       // ✅ 关键：每次更新都重新渲染完整 Markdown
-	//       await tick(); // 等待 DOM 更新
-
-	//       // 自动滚动到底部
-	//       if (autoScroll) {
-	//         window.scrollTo({
-	//           top: document.body.scrollHeight,
-	//           behavior: "smooth"
-	//         });
-	//       }
-
-	//       // 控制打印速度
-	//       await new Promise(resolve =>
-	//         setTimeout(resolve, PRINT_SPEED)
-	//       );
-	//     }
-
-	// }
+	// 用户发送问答
 	const submitPrompt = async (userPrompt: any) => {
 		console.log("userPrompt-停止以后", userPrompt);
 		if (!userPrompt) {
@@ -462,7 +426,10 @@
 		// }
 	};
 
-	const stopResponse = () => {
+	const stopResponse = async () => {
+		const response: any = await stopChat({ taskId: stopChatTaskId });
+		console.log("response-stopResponse", response);
+
 		stopResponseFlag = true;
 	};
 
@@ -608,7 +575,7 @@
 							/>
 						</div>
 						<div class="self-center font-medium text-sm s-CQzCIXq4wXlR">
-							小助手
+							小C+
 						</div>
 					</div>
 				</div>

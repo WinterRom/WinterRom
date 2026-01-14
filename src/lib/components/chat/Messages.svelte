@@ -13,6 +13,7 @@
 	import { get } from "svelte/store";
 	import { userInfor, userName } from "$lib/stores";
 	import toast from "svelte-french-toast";
+	import { parse } from "svelte/compiler";
 
 	export let sendPrompt: Function;
 	export let regenerateResponse: Function;
@@ -396,42 +397,6 @@
 	function editMessageByContent(e: any) {
 		e.target.style.height = `${e.target.scrollHeight}px`;
 	}
-
-	const renderBuffer = async () => {
-		const PRINT_SPEED = 50;
-		if (messages.length < 2) {
-			return;
-		}
-		let contents: any;
-		for (const message of messages) {
-			if (message.content && message.role === "assistant")
-				contents = message.content;
-		}
-		console.log("message-renderBuffer", contents);
-
-		// 自动滚动控制
-		let autoScroll = true;
-		const chars = contents.split("");
-		for (const char of chars) {
-			displayedContent += char;
-			console.log("char", char);
-
-			// ✅ 关键：每次更新都重新渲染完整 Markdown
-			await tick(); // 等待 DOM 更新
-
-			// 自动滚动到底部
-			if (autoScroll) {
-				window.scrollTo({
-					top: document.body.scrollHeight,
-					behavior: "smooth"
-				});
-			}
-
-			// 控制打印速度
-			await new Promise(resolve => setTimeout(resolve, PRINT_SPEED));
-			// messages = messages;
-		}
-	};
 </script>
 <style>
 	/* .float-right {
@@ -475,18 +440,20 @@
 		width: 94%;
 	}
 </style>
+<!--没有会话消息默认新对话框-->
 {#if messages.length == 0}
 	<div class="m-auto text-center max-w-md pb-56 px-2">
 		<div class="flex justify-center mt-8">
 			<img
 				src="/favicon.png"
 				class=" w-16 invert-[10%] dark:invert-[100%] rounded-full"
-				alt="小助手"
+				alt="小C+"
 				draggable="false"
 			/>
 		</div>
-		<div class=" mt-2 text-2xl text-gray-800 dark:text-gray-100 font-semibold">
-			How can I help you today?
+		<div class=" mt-2 text-1xl text-gray-800 dark:text-gray-100 font-semibold">
+			<p>小C+，您的智能助手！</p>
+			<p>有问必答,高效办理。请直接输入您的问题。</p>
 		</div>
 	</div>
 {:else}
@@ -507,6 +474,7 @@
 							? 'user-set-text-align'
 							: 'set-text-align-other'}"
 					>
+						<!--区分角色-->
 						<div
 							class="w-full self-center font-bold mb-0.5 {message.role ===
 							'user'
@@ -539,7 +507,7 @@
 									{#if message.role === "user"}
 										{userNames}
 									{:else}
-										小助手
+										小C+
 										<!-- <span class=" text-gray-500 text-sm font-medium"
 									>{message.model ? ` ${message.model}` : ""}</span
 								> -->
@@ -736,7 +704,8 @@
 															</svg>
 														</button>
 													</div>
-												{:else if message.parentId === null && Object.values(history.messages).filter(message => message.parentId === null).length > 1}
+												{:else if message.parentId === null && Object.values(history.messages).filter(// @ts-ignore
+														message => message.parentId === null).length > 1}
 													<div class="flex self-center">
 														<button
 															class="self-center"
