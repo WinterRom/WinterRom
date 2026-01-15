@@ -187,6 +187,7 @@
 			message: userPrompt,
 			conversationId: conversationId
 		});
+		let tagBuffer = "";
 		while (true) {
 			// let { value, done } = await reader.read();
 			if (stopResponseFlag || _chatId !== $chatId) {
@@ -254,45 +255,98 @@
 							// }
 							if (data.event === "message") {
 								console.log("data.event ", data.event);
-								// debugger;
-								const PRINT_SPEED = 50;
-								// 自动滚动控制
+								const PRINT_SPEED = 30; // 打字速度
 								let autoScroll = true;
-								// 1. 先将 Markdown 解析为完整的 HTML
-								const fullHtml = data.answer;
-								// 2. 标签感知打字机逻辑
+
+								// 【重要】将缓冲区的内容和新收到的内容拼接
+								// 注意：如果您的 data.answer 是 Markdown，这里建议直接拼接文本即可，不要做 HTML 解析逻辑
+								// 如果您确定 data.answer 是 HTML 或者您在后端已经转换过，则使用以下逻辑：
+								let fullTextChunk = tagBuffer + data.answer;
+								tagBuffer = ""; // 清空缓冲
+
 								let i = 0;
-								while (i < fullHtml.length) {
-									if (fullHtml[i] === "<") {
-										// 如果遇到标签，找到标签结束位置，一次性追加整个标签
-										const endTagIndex = fullHtml.indexOf(">", i);
+								while (i < fullTextChunk.length) {
+									// 检查是否遇到标签起始
+									if (fullTextChunk[i] === "<") {
+										const endTagIndex = fullTextChunk.indexOf(">", i);
+
 										if (endTagIndex !== -1) {
-											responseMessage.content += fullHtml.slice(
+											// 1. 找到了完整的标签，一次性追加到 content，不触发延迟
+											// 这样用户瞬间看到的是样式变化，而不是标签字符
+											responseMessage.content += fullTextChunk.slice(
 												i,
 												endTagIndex + 1
 											);
 											i = endTagIndex + 1;
-											// 标签追加不触发延迟，直接进入下一轮循环检查
 											continue;
+										} else {
+											// 2. 没找到闭合的 ">"，说明标签被截断了（例如只收到了 "<str"）
+											// 将剩下的所有字符存入 buffer，等待下一个数据包拼接
+											tagBuffer = fullTextChunk.slice(i);
+											break; // 结束本次循环，等待下一次数据
 										}
 									}
-									// 如果是普通文字，逐字符追加并触发延迟
-									responseMessage.content += fullHtml[i];
+
+									// 普通字符，逐个追加并延迟
+									responseMessage.content += fullTextChunk[i];
 									i++;
+
+									// 强制更新 Svelte 视图
 									messages = messages;
 									await tick();
 
 									if (autoScroll) {
 										window.scrollTo({
 											top: document.body.scrollHeight,
-											behavior: "smooth"
+											behavior: "smooth" // 或 "auto" 以获得更好的性能
 										});
 									}
 
+									// 只有普通文字才延迟，HTML标签不延迟
 									await new Promise(resolve =>
 										setTimeout(resolve, PRINT_SPEED)
 									);
 								}
+								// // debugger;
+								// const PRINT_SPEED = 50;
+								// // 自动滚动控制
+								// let autoScroll = true;
+								// // 1. 先将 Markdown 解析为完整的 HTML
+								// let fullHtml: any = data.answer;
+								// // 2. 标签感知打字机逻辑
+
+								// let i = 0;
+								// while (i < fullHtml.length) {
+								// 	if (fullHtml[i] === "<") {
+								// 		// 如果遇到标签，找到标签结束位置，一次性追加整个标签
+								// 		const endTagIndex = fullHtml.indexOf(">", i);
+								// 		if (endTagIndex !== -1) {
+								// 			responseMessage.content += fullHtml.slice(
+								// 				i,
+								// 				endTagIndex + 1
+								// 			);
+								// 			i = endTagIndex + 1;
+								// 			// 标签追加不触发延迟，直接进入下一轮循环检查
+								// 			continue;
+								// 		}
+								// 	}
+								// 	// 如果是普通文字，逐字符追加并触发延迟
+								// 	responseMessage.content += fullHtml[i];
+								// 	i++;
+								// 	messages = messages;
+								// 	await tick();
+
+								// 	if (autoScroll) {
+								// 		window.scrollTo({
+								// 			top: document.body.scrollHeight,
+								// 			behavior: "smooth"
+								// 		});
+								// 	}
+
+								// 	await new Promise(resolve =>
+								// 		setTimeout(resolve, PRINT_SPEED)
+								// 	);
+								// }
 								if (!responseMessage.content) {
 									responseMessage.error = true;
 									responseMessage.done = true;
@@ -366,6 +420,7 @@
 		if (!userPrompt) {
 			return;
 		}
+
 		const _chatId: any = JSON.parse(JSON.stringify($chatId));
 		// console.log("submitPrompt", _chatId);
 		// await generateChatTitle(_chatId, userPrompt);
@@ -429,6 +484,8 @@
 	const stopResponse = async () => {
 		const response: any = await stopChat({ taskId: stopChatTaskId });
 		console.log("response-stopResponse", response);
+		messages.at(-1).done = true;
+		console.log("messages.at(-1).done", messages.at(-1).done);
 
 		stopResponseFlag = true;
 	};
@@ -513,6 +570,9 @@
 	.nav-bar {
 		width: var(--main-width);
 		width: 74%;
+	}
+	.set-margin {
+		margin-bottom: 12rem !important;
 	}
 </style>
 <svelte:window
@@ -620,7 +680,9 @@
 			<div
 				class="set-new-margin {isMobile
 					? ''
-					: 'mt-10'} mb-32 w-full h-full flex flex-col"
+					: 'mt-10'} mb-32 w-full h-full flex flex-col {messages.length > 0
+					? 'set-margin'
+					: ''}"
 			>
 				<Messages
 					bind:history
@@ -643,7 +705,12 @@
 			<!-- <div class="w-full h-[54px] fixd bottom-0"> -->
 
 			<!-- </div> -->
-			<div />
+			<div
+				class="fixed bottom-0 w-full text-sm text-center text-[#c0c0c0]"
+				style="bottom: 0.875rem;"
+			>
+				<p>内容由AI生成，仅供参考</p>
+			</div>
 		</div>
 		<Modal bind:show>
 			<Sidebar bind:show />
@@ -658,7 +725,7 @@
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
 	</div> -->
 
-			<div class="set-new-margin mt-10 mb-32 w-full flex flex-col">
+			<div class=" mt-10 w-full flex flex-col">
 				<Messages
 					bind:history
 					bind:messages
@@ -668,15 +735,21 @@
 					{sendPrompt}
 					{regenerateResponse}
 				/>
+				<MessageInput
+					bind:prompt
+					bind:autoScroll
+					{isMobile}
+					{messages}
+					{submitPrompt}
+					{stopResponse}
+				/>
 			</div>
-			<MessageInput
-				bind:prompt
-				bind:autoScroll
-				{isMobile}
-				{messages}
-				{submitPrompt}
-				{stopResponse}
-			/>
+		</div>
+		<div
+			class="fixed bottom-0 w-full text-sm text-center text-[#c0c0c0]"
+			style="bottom: 0.875rem;"
+		>
+			<p>内容由AI生成，仅供参考</p>
 		</div>
 		<!-- <div class=" py-2.5 flex flex-col justify-between w-full set-width">
 	<div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">

@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-04-15 17:25:18
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-14 11:02:44
+ * @LastEditTime: 2026-01-14 14:02:41
  * @FilePath: \foundesrcPro\itc_ai_self_ui\src\lib\utils\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -103,4 +103,52 @@ const copyToClipboard = (text: any) => {
 			console.error("Async: Could not copy text: ", err);
 		}
 	);
+};
+
+/**
+ * 将后端返回的扁平化历史记录转换为前端 Messages.svelte 所需的树状 history 结构
+ * 后端数据格式示例: [{ query: "...", answer: "...", id: "..." }, ...]
+ */
+export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
+	const history: any = {
+		messages: {},
+		currentId: null
+	};
+
+	let lastId: any = null;
+
+	backendMessages.forEach((item, index) => {
+		const userMsgId = `${item.id}-user`;
+		const assistantMsgId = `${item.id}-assistant`;
+
+		// 1. 创建用户消息节点
+		history.messages[userMsgId] = {
+			id: userMsgId,
+			parentId: lastId,
+			childrenIds: [assistantMsgId],
+			role: "user",
+			content: item.query,
+			done: true
+		};
+
+		// 如果有上一个节点，将当前用户节点设为其子节点
+		if (lastId && history.messages[lastId]) {
+			history.messages[lastId].childrenIds.push(userMsgId);
+		}
+
+		// 2. 创建助手消息节点
+		history.messages[assistantMsgId] = {
+			id: assistantMsgId,
+			parentId: userMsgId,
+			childrenIds: [],
+			role: "assistant",
+			content: item.answer,
+			done: true
+		};
+
+		lastId = assistantMsgId;
+	});
+
+	history.currentId = lastId;
+	return history;
 };

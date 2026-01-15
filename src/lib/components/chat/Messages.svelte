@@ -442,7 +442,10 @@
 </style>
 <!--没有会话消息默认新对话框-->
 {#if messages.length == 0}
-	<div class="m-auto text-center max-w-md pb-56 px-2">
+	<div
+		class="m-auto text-center max-w-md px-2"
+		style="margin: 10rem auto 1.25rem;"
+	>
 		<div class="flex justify-center mt-8">
 			<img
 				src="/favicon.png"
@@ -838,23 +841,19 @@
 													</div>
 												{:else}
 													<!-- {message.content} -->
-													{@html marked(
-														message.content.replace("\\\\", "\\\\\\")
-													)
-														.trim()
-														.replace(/\n{2,}/g, "\n")
-														.replace(/\//g, "")}
-													<!-- .replace(/\//g, "") -->
-													<!-- {#if message.content.replace(/<[^>]*>/g, "")}
+													<div
+														class="prose prose-sm max-w-none dark:prose-invert"
+													>
 														{@html marked(
 															message.content.replace("\\\\", "\\\\\\")
-														)
+														)}
+														<!-- {@html message.content
+															.replace("\\\\", "\\\\\\")
 															.trim()
-															.replace(/\n{2,}/g, "\n")}{:else}<p>
-														
-															没有您想要的答案呢！
-														</p>
-													{/if} -->
+															.replace(/\n{2,}/g, "\n")
+															.replace(/\//g, "")
+															.replace(/<\/?strong[^>]*>/g, "")} -->
+													</div>
 												{/if}
 
 												{#if message.done}

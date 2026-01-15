@@ -4,7 +4,11 @@
 	import { onMount, tick, onDestroy } from "svelte";
 	import { OLLAMA_API_BASE_URL } from "$lib/constants";
 	import { getChat, getChatSSE } from "$lib/api/chat";
-	import { convertMessagesToHistory, splitStream } from "$lib/utils";
+	import {
+		convertMessagesToHistory,
+		splitStream,
+		convertBackendMessagesToHistory
+	} from "$lib/utils";
 	import { goto } from "$app/navigation";
 	import { models, settings, db, chats, chatId } from "$lib/stores";
 	import Sidebar from "$lib/components/layout/Sidebar.svelte";
@@ -14,7 +18,6 @@
 	import Navbar from "$lib/components/layout/Navbar.svelte";
 	import { page } from "$app/stores";
 	import { getConversationMessageList } from "$lib/api/chat";
-
 	import Modal from "$lib/components/common/Modal.svelte";
 	let loaded = false;
 	let stopResponseFlag = false;
@@ -32,6 +35,7 @@
 		messages: {},
 		currentId: null
 	};
+	let conversationId: string = $page.params.id;
 	let windowWidth = 0;
 	$: isMobile = windowWidth <= 1040;
 	$: if (copyContent) {
@@ -90,42 +94,76 @@
 	// Web functions
 	//////////////////////////
 
+	// const loadChat = async () => {
+	// 	await chatId.set($page.params.id);
+	// 	const chat = await $db.getChatById($chatId);
+
+	// 	if (chat) {
+	// 		console.log("chat-loadChat", chat);
+
+	// 		history =
+	// 			(chat?.history ?? undefined) !== undefined
+	// 				? chat.history
+	// 				: convertMessagesToHistory(chat.messages);
+	// 		title = chat.title;
+
+	// 		let _settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
+	// 		await settings.set({
+	// 			..._settings,
+	// 			system: chat.system ?? _settings.system,
+	// 			options: chat.options ?? _settings.options
+	// 		});
+	// 		autoScroll = true;
+
+	// 		await tick();
+	// 		if (messages.length > 0) {
+	// 			history.messages[messages.at(-1).id].done = true;
+	// 		}
+	// 		await tick();
+
+	// 		return chat;
+	// 	} else {
+	// 		return null;
+	// 	}
+	// };
 	const loadChat = async () => {
 		await chatId.set($page.params.id);
+		conversationId = $page.params.id;
 
 		const params: any = { conversationId: $page.params.id };
 		const { data } = await getConversationMessageList(params);
 		console.log("params-历史对话框", data);
 
-		if (data) {
-			// console.log("chat-loadChat", chat);
+		if (data && Array.isArray(data)) {
+			// 直接使用后端返回的扁平化数组进行转换，不经过本地存储
+			history = convertBackendMessagesToHistory(data);
 
-			history =
-				(data?.history ?? undefined) !== undefined
-					? data.history
-					: convertMessagesToHistory(data);
-			// title = chat.title;
-
-			let _settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
-			// await settings.set({
-			// 	..._settings,
-			// 	system: chat.system ?? _settings.system,
-			// 	options: chat.options ?? _settings.options
-			// });
 			autoScroll = true;
-
 			await tick();
-			if (messages.length > 0) {
-				history.messages[messages.at(-1).id].done = true;
+
+			// 确保最后一条消息标记为完成
+			if (history.currentId && history.messages[history.currentId]) {
+				history.messages[history.currentId].done = true;
 			}
-			await tick();
 
+			await tick();
+			if (autoScroll) {
+				window.scrollTo({ top: document.body.scrollHeight });
+			}
+			return data;
+		} else if (data && data.history) {
+			// 兼容可能已经包含 history 结构的情况
+			history = data.history;
 			return data;
 		} else {
+			// 如果没有数据，初始化空的 history
+			history = {
+				messages: {},
+				currentId: null
+			};
 			return null;
 		}
 	};
-
 	const copyToClipboard = (text: string, usercopy?: any) => {
 		console.log("copyToClipboard+page", text, usercopy);
 
@@ -204,7 +242,10 @@
 
 		await tick();
 		window.scrollTo({ top: document.body.scrollHeight });
-		const response: any = await getChat({ message: userPrompt });
+		const response: any = await getChat({
+			message: userPrompt,
+			conversationId: conversationId
+		});
 		console.log("responseMessage", responseMessage);
 
 		while (true) {
@@ -273,7 +314,7 @@
 								// 自动滚动控制
 								let autoScroll = true;
 								// 1. 先将 Markdown 解析为完整的 HTML
-								const fullHtml = data.answer;
+								let fullHtml = data.answer;
 
 								// 2. 标签感知打字机逻辑
 								let i = 0;

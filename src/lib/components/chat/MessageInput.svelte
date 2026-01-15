@@ -45,6 +45,7 @@
 			e.preventDefault();
 		}
 		if (prompt !== "" && e.keyCode == 13 && !e.shiftKey) {
+			messages.at(-1).done == true;
 			submitPrompt(prompt);
 		}
 	}
@@ -79,11 +80,14 @@
 		width: 96%;
 		margin: 0 2%;
 	}
+	.set-new-bottom {
+		bottom: 32px;
+	}
 </style>
 <div
-	class="fixed bottom-0 set-padding-right {isMobile
-		? 'set-mobile'
-		: 'content-right'}"
+	class=" {messages.length > 0
+		? 'fixed set-new-bottom'
+		: ''} set-padding-right {isMobile ? 'set-mobile' : 'content-right'}"
 >
 	<div
 		class="px-2.5 pt-2.5 set-no-padding -mb-0.5 mx-auto inset-x-0 bg-transparent flex justify-center"
@@ -125,18 +129,18 @@
 						submitPrompt(prompt);
 					}}
 				>
-					<div class=" flex">
+					<div class="">
 						<textarea
 							id="chat-textarea"
 							class=" dark:bg-gray-800 dark:text-gray-100 outline-none w-full py-3 px-2 pl-4 rounded-xl resize-none"
 							placeholder="小C+，您的智能助手！快开始和我的聊天吧！"
 							bind:value={prompt}
 							on:keypress={e => keyBoardDown(e)}
-							rows="1"
+							rows="3"
 							on:input={e => InputEvent(e)}
 						/>
 
-						<div class="self-end mb-2 flex space-x-0.5 mr-2">
+						<div class="self-end mb-2 flex justify-end space-x-0.5 mr-2">
 							{#if messages.length == 0 || messages.at(-1).done == true}
 								<button
 									type="button"
@@ -145,6 +149,17 @@
 									title="上传文件"
 								>
 									<svg
+										viewBox="0 0 24 24"
+										xmlns="http://www.w3.org/2000/svg"
+										width="24"
+										height="24"
+										fill="currentColor"
+										class="remixicon h-5 w-5"
+										><path
+											d="M14 13.5V8C14 5.79086 12.2091 4 10 4C7.79086 4 6 5.79086 6 8V13.5C6 17.0899 8.91015 20 12.5 20C16.0899 20 19 17.0899 19 13.5V4H21V13.5C21 18.1944 17.1944 22 12.5 22C7.80558 22 4 18.1944 4 13.5V8C4 4.68629 6.68629 2 10 2C13.3137 2 16 4.68629 16 8V13.5C16 15.433 14.433 17 12.5 17C10.567 17 9 15.433 9 13.5V8H11V13.5C11 14.3284 11.6716 15 12.5 15C13.3284 15 14 14.3284 14 13.5Z"
+										/></svg
+									>
+									<!-- <svg
 										xmlns="http://www.w3.org/2000/svg"
 										viewBox="0 0 24 24"
 										fill="currentColor"
@@ -155,7 +170,7 @@
 											d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z"
 											clip-rule="evenodd"
 										/>
-									</svg>
+									</svg> -->
 								</button>
 								<input
 									type="file"

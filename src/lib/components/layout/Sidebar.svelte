@@ -53,7 +53,10 @@
 	const loadChat = async (id: any) => {
 		console.log("id-loadChat", id);
 
+		// 设置当前的 chatId store，以便页面能够感知到切换
+		await chatId.set(id);
 		goto(`/c/${id}`);
+		show = false;
 	};
 
 	const editChatTitle = async (id: any, name: any) => {
