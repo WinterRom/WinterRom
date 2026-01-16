@@ -198,8 +198,6 @@
 	};
 
 	const copyToClipboard = (text: string, usercopy?: any) => {
-		console.log("text-copyToClipboard", text);
-		console.log("usercopy-copyToClipboard", usercopy);
 		if (usercopy) {
 			copyContent = text;
 		}
@@ -479,8 +477,7 @@
 					>
 						<!--区分角色-->
 						<div
-							class="w-full self-center font-bold mb-0.5 {message.role ===
-							'user'
+							class="w-full self-center mb-0.5 {message.role === 'user'
 								? 'user-set-margin'
 								: 'set-margin-other'}"
 						>
@@ -506,7 +503,7 @@
 										/>
 									{/if}
 								</div>
-								<div style="line-height: 28px;margin-left: 4px;">
+								<div style="line-height: 28px;margin-left: 4px; ">
 									{#if message.role === "user"}
 										{userNames}
 									{:else}
@@ -518,7 +515,7 @@
 								</div>
 							</div>
 						</div>
-
+						<!--user角色-->
 						{#if message.role !== "user" && message.content === ""}
 							<div class="w-full mt-3">
 								<div class="animate-pulse flex w-full">
@@ -552,6 +549,7 @@
 								</div>
 							</div>
 						{:else}
+							<!--图片-->
 							<div
 								class="prose chat-{message.role} {message.role === 'user'
 									? ''
@@ -562,9 +560,9 @@
 										<div class="my-3 w-full flex overflow-x-auto space-x-2">
 											{#each message.files as file}
 												<div>
-													{#if file.type === "image"}
+													{#if file?.type === "image"}
 														<img
-															src={file.url}
+															src={file?.url}
 															alt="input"
 															class=" max-h-96 rounded-lg"
 															draggable="false"
@@ -776,7 +774,7 @@
 										</div>
 									{/if}
 								{/if}
-
+								<!--assistant角色-->
 								{#if message.role === "assistant"}
 									<div>
 										{#if message?.edit === true}
@@ -967,9 +965,7 @@
 																class=" {messageIdx + 1 === messages.length
 																	? 'visible'
 																	: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition whitespace-pre-wrap"
-																on:click={() => {
-																	console.log(message);
-																}}
+																on:click={() => {}}
 																id="info-{message.id}"
 															>
 																<svg

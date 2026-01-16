@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-04-15 17:25:18
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-14 14:02:41
+ * @LastEditTime: 2026-01-15 15:19:57
  * @FilePath: \foundesrcPro\itc_ai_self_ui\src\lib\utils\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -28,31 +28,23 @@ export const splitStream = (splitOn: any) => {
 };
 
 export const convertMessagesToHistory = (messages: any) => {
-	console.log("convertMessagesToHistory", messages);
-
 	let history: any = {
 		messages: {},
 		currentId: null
 	};
-	debugger;
+
 	let parentMessageId = null;
 	let messageId = null;
-	debugger;
+
 	for (const message of messages) {
 		// messageId = uuidv4();
 		messageId = message.id;
-		console.log("message", message);
-		console.log("messageId", messageId);
-		debugger;
+
 		if (parentMessageId !== null) {
-			console.log("if", parentMessageId !== null);
-			debugger;
 			history.messages[parentMessageId].childrenIds = [
 				...history.messages[parentMessageId].childrenIds,
 				messageId
 			];
-			console.log("if-history", history);
-			debugger;
 		}
 
 		history.messages[messageId] = {
@@ -61,7 +53,6 @@ export const convertMessagesToHistory = (messages: any) => {
 			parentId: parentMessageId,
 			childrenIds: []
 		};
-		console.log("history", history);
 		debugger;
 		parentMessageId = messageId;
 	}
@@ -87,21 +78,14 @@ const copyToClipboard = (text: any) => {
 		try {
 			var successful = document.execCommand("copy");
 			var msg = successful ? "successful" : "unsuccessful";
-			console.log("Fallback: Copying text command was " + msg);
-		} catch (err) {
-			console.error("Fallback: Oops, unable to copy", err);
-		}
+		} catch (err) {}
 
 		document.body.removeChild(textArea);
 		return;
 	}
 	navigator.clipboard.writeText(text).then(
-		function () {
-			console.log("Async: Copying to clipboard was successful!");
-		},
-		function (err) {
-			console.error("Async: Could not copy text: ", err);
-		}
+		function () {},
+		function (err) {}
 	);
 };
 

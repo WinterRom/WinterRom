@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-03-04 10:22:31
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-14 09:17:32
+ * @LastEditTime: 2026-01-15 14:42:49
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\api\chat.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -54,6 +54,21 @@ export const getConversationMessageList = (data: any) =>
 		method: "post",
 		data
 	});
+
+// 文件上传
+export const uploadFile = (file: File) => {
+	const formData = new FormData();
+	formData.append("file", file);
+	// formData.append("user", "user-id"); // 如有需要
+	return request({
+		url: "/difyApi/uploadFile",
+		headers: {
+			"Content-Type": "multipart/form-data"
+		},
+		method: "post",
+		data: formData
+	});
+};
 export const getChatSSE = async (data: any, onData: (data: string) => void) => {
 	// 1. 创建AbortController以便取消请求
 	const controller = new AbortController();

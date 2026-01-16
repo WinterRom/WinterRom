@@ -3,7 +3,11 @@
 	import toast from "svelte-french-toast";
 	import { onMount, tick, onDestroy } from "svelte";
 	import { OLLAMA_API_BASE_URL } from "$lib/constants";
-	import { getChat, getChatSSE } from "$lib/api/chat";
+	import {
+		getChat,
+		getChatSSE,
+		getConversationMessageList
+	} from "$lib/api/chat";
 	import {
 		convertMessagesToHistory,
 		splitStream,
@@ -17,7 +21,6 @@
 	import ModelSelector from "$lib/components/chat/ModelSelector.svelte";
 	import Navbar from "$lib/components/layout/Navbar.svelte";
 	import { page } from "$app/stores";
-	import { getConversationMessageList } from "$lib/api/chat";
 	import Modal from "$lib/components/common/Modal.svelte";
 	let loaded = false;
 	let stopResponseFlag = false;
@@ -28,7 +31,6 @@
 	let showLeft: boolean = false;
 	let title = "";
 	let prompt = "";
-	console.log("show", show);
 	let selectedModels = [""];
 	let messages: any = [];
 	let history: any = {
@@ -44,7 +46,6 @@
 	}
 	$: if (history.currentId !== null) {
 		let _messages = [];
-
 		let currentMessage: any = history.messages[history.currentId];
 		while (currentMessage !== null) {
 			_messages.unshift({ ...currentMessage });
@@ -59,12 +60,8 @@
 	}
 
 	$: if ($page.params.id) {
-		console.log("chat--1-id", $page.params.id);
-
 		(async () => {
 			let chat = await loadChat();
-			console.log("chat--1", chat);
-
 			await tick();
 			if (chat) {
 				loaded = true;
@@ -75,14 +72,12 @@
 	}
 
 	function handleResize() {
-		windowWidth = window.innerWidth;
+		console.log("conversationId", conversationId);
 
-		console.log("isMobile", isMobile);
-		console.log("windowWidth", windowWidth);
+		windowWidth = window.innerWidth;
 		show = windowWidth > 1040;
 	}
 
-	// console.log('show--', show)
 	onMount(async () => {
 		window.addEventListener("resize", handleResize);
 		handleResize(); // 初始化尺寸
@@ -99,8 +94,6 @@
 	// 	const chat = await $db.getChatById($chatId);
 
 	// 	if (chat) {
-	// 		console.log("chat-loadChat", chat);
-
 	// 		history =
 	// 			(chat?.history ?? undefined) !== undefined
 	// 				? chat.history
@@ -129,23 +122,17 @@
 	const loadChat = async () => {
 		await chatId.set($page.params.id);
 		conversationId = $page.params.id;
-
 		const params: any = { conversationId: $page.params.id };
 		const { data } = await getConversationMessageList(params);
-		console.log("params-历史对话框", data);
-
 		if (data && Array.isArray(data)) {
 			// 直接使用后端返回的扁平化数组进行转换，不经过本地存储
 			history = convertBackendMessagesToHistory(data);
-
 			autoScroll = true;
 			await tick();
-
 			// 确保最后一条消息标记为完成
 			if (history.currentId && history.messages[history.currentId]) {
 				history.messages[history.currentId].done = true;
 			}
-
 			await tick();
 			if (autoScroll) {
 				window.scrollTo({ top: document.body.scrollHeight });
@@ -165,39 +152,28 @@
 		}
 	};
 	const copyToClipboard = (text: string, usercopy?: any) => {
-		console.log("copyToClipboard+page", text, usercopy);
-
 		if (!navigator.clipboard) {
 			var textArea = document.createElement("textarea");
 			textArea.value = text;
-
 			// Avoid scrolling to bottom
 			textArea.style.top = "0";
 			textArea.style.left = "0";
 			textArea.style.position = "fixed";
-
 			document.body.appendChild(textArea);
 			textArea.focus();
 			textArea.select();
-
 			try {
 				var successful = document.execCommand("copy");
 				var msg = successful ? "successful" : "unsuccessful";
-				console.log("Fallback: Copying text command was " + msg);
 			} catch (err) {
 				console.error("Fallback: Oops, unable to copy", err);
 			}
-
 			document.body.removeChild(textArea);
 			return;
 		}
 		navigator.clipboard.writeText(text).then(
-			function () {
-				console.log("Async: Copying to clipboard was successful!");
-			},
-			function (err) {
-				console.error("Async: Could not copy text: ", err);
-			}
+			function () {},
+			function (err) {}
 		);
 	};
 
@@ -208,8 +184,6 @@
 	const sendPrompt = async (userPrompt: any, parentId: any, _chatId: any) => {
 		// await Promise.all(
 		// 	// selectedModels.map(async model => {
-		// 		// console.log(model);
-
 		// 	// })
 		// )
 		await sendPromptOllama(userPrompt, parentId, _chatId);
@@ -246,8 +220,6 @@
 			message: userPrompt,
 			conversationId: conversationId
 		});
-		console.log("responseMessage", responseMessage);
-
 		while (true) {
 			// let { value, done } = await reader.read();
 			if (stopResponseFlag || _chatId !== $chatId) {
@@ -257,27 +229,19 @@
 			}
 			try {
 				let lines = response?.data.split("\n");
-				console.log("lines", lines);
 				// debugger;
 				for (const line of lines) {
 					if (line) {
 						if (line.startsWith("event:")) {
 							continue;
 						}
-						// console.log("line", line);
 						const jsonString = line.replace("data: ", ""); // 去除前缀
 						// 关键过滤逻辑：跳过 event: 开头的行
-
-						// console.log("jsonString", JSON.parse(jsonString));
-						console.log("jsonString", jsonString);
 						// debugger;
 						if (!jsonString) continue; // 跳过空行
 						let data = JSON.parse(jsonString);
-						console.log("data-lins-for", data);
-						console.log("data.event", data.event);
 						if (data.event === "error") {
 							// if (!responseMessage.content) {
-							console.log(111);
 							responseMessage.error = true;
 							responseMessage.done = true;
 							responseMessage.content =
@@ -296,11 +260,9 @@
 							// 		break;
 							// 	case "node_finished":
 							// 		// 处理节点完成事件
-							// 		// console.log(`节点 ${event.data.node_id} 完成`);
 							// 		break;
 							// 	case "workflow_finished":
 							// 		// 处理工作流完成事件
-							// 		console.log("工作流执行完成");
 							// 		// isStreaming = false;
 							// 		isStreaming = false;
 							// 		responseMessage.done = true;
@@ -308,14 +270,12 @@
 							// 	// ... 其他事件处理
 							// }
 							if (data.event === "message") {
-								console.log("data.event ", data.event);
 								// debugger;
 								const PRINT_SPEED = 50;
 								// 自动滚动控制
 								let autoScroll = true;
 								// 1. 先将 Markdown 解析为完整的 HTML
 								let fullHtml = data.answer;
-
 								// 2. 标签感知打字机逻辑
 								let i = 0;
 								while (i < fullHtml.length) {
@@ -381,7 +341,6 @@
 					}
 				}
 			} catch (error: any) {
-				console.log(error);
 				if ("detail" in error) {
 					toast.error(error.detail);
 				}
@@ -421,19 +380,14 @@
 	};
 
 	const submitPrompt = async (userPrompt: any) => {
-		console.log("userPrompt--pageID", userPrompt);
-
 		const _chatId = JSON.parse(JSON.stringify($chatId));
-		console.log("submitPrompt", _chatId);
 		// await generateChatTitle(_chatId, userPrompt);
 		// if (selectedModels.includes("")) {
 		// 	toast.error("Model not selected");
 		// } else if (messages.length != 0 && messages.at(-1).done != true) {
-		// 	console.log("wait");
 		// } else {
 		const textarea: any = document.getElementById("chat-textarea");
 		textarea.style.height = "";
-
 		let userMessageId = uuidv4();
 		let userMessage = {
 			id: userMessageId,
@@ -442,14 +396,12 @@
 			role: "user",
 			content: userPrompt
 		};
-
 		if (messages.length !== 0) {
 			history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
 		}
 
 		history.messages[userMessageId] = userMessage;
 		history.currentId = userMessageId;
-
 		await tick();
 		if (messages.length == 1) {
 			await $db.createNewChat({
@@ -486,13 +438,10 @@
 
 	const stopResponse = () => {
 		stopResponseFlag = true;
-		console.log("stopResponse");
 	};
 
 	const regenerateResponse = async () => {
 		const _chatId = JSON.parse(JSON.stringify($chatId));
-		console.log("regenerateResponse", _chatId);
-
 		if (messages.length != 0 && messages.at(-1).done == true) {
 			messages.splice(messages.length - 1, 1);
 			messages = messages;
@@ -504,8 +453,6 @@
 		}
 	};
 	const setChatTitle = async (_chatId: any, _title: any) => {
-		console.log("setChatTitle", _chatId, _title);
-
 		await $db.updateChatById(_chatId, { title: _title });
 		if (_chatId === $chatId) {
 			title = _title;
@@ -513,8 +460,6 @@
 	};
 	const generateChatTitle = async (_chatId: any, userPrompt: any) => {
 		if ($settings.titleAutoGenerate ?? true) {
-			console.log("generateChatTitle-创建标题", userPrompt);
-
 			// 			const res = await fetch(`${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}/generate`, {
 			// 				method: 'POST',
 			// 				headers: {
@@ -535,10 +480,8 @@
 			// 					if ('detail' in error) {
 			// 						toast.error(error.detail);
 			// 					}
-			// 					console.log(error);
 			// 					return null;
 			// 				});
-			// console.log('res',res);
 			await setChatTitle(_chatId, userPrompt === "" ? "新会话" : userPrompt);
 			// 	if (userPrompt) {
 			// 		await setChatTitle(_chatId, userPrompt=== '' ? '新会话' : userPrompt);
@@ -557,7 +500,7 @@
 		background-color: #f4f6fc;
 	}
 	.set-new-margin {
-		margin-bottom: 4.5rem;
+		margin-bottom: 12rem;
 		background-color: #f4f6fc;
 	}
 	.sidebar-left {
@@ -569,7 +512,7 @@
 		width: var(--main-width);
 		/* background-color: #000; */
 		background-color: #f4f6fc;
-		padding: 0 6%;
+		/* padding: 0 6%; */
 	}
 	.hidden-width {
 		width: 0%;
@@ -582,7 +525,15 @@
 	}
 	.nav-bar {
 		width: var(--main-width);
-		width: 74%;
+		/* width: 74%; */
+	}
+	.set-margin {
+		margin-bottom: 12rem !important;
+		margin-top: 44px;
+	}
+	.set-bg {
+		background-color: #f4f6fc;
+		line-height: 2.5rem;
 	}
 </style>
 <svelte:window
@@ -661,10 +612,7 @@
 						<button
 							class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 							on:click={async () => {
-								console.log(111);
-
 								show = !show;
-								console.log("showLeft", showLeft);
 							}}
 						>
 							<svg
@@ -742,7 +690,13 @@
 						>
 					</div>
 				</div>
-				<div class="set-new-margin mt-10 mb-32 w-full h-full flex flex-col">
+				<div
+					class="set-new-margin {isMobile
+						? ''
+						: 'mt-10'} mb-32 w-full h-full flex flex-col {messages.length > 0
+						? 'set-margin'
+						: ''}"
+				>
 					<Messages
 						bind:history
 						bind:messages
@@ -764,17 +718,24 @@
 				<!-- <div class="w-full h-[54px] fixd bottom-0"> -->
 
 				<!-- </div> -->
-				<div />
+
+				<div
+					class="fixed set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
+				>
+					<p>内容由AI生成，仅供参考</p>
+				</div>
 			</div>
 			<Modal bind:show>
-				<Sidebar bind:show />
+				<Sidebar bind:show bind:conversationId />
 			</Modal>
 		</div>
 	{:else}
 		<div class="min-h-screen w-full flex justify-center bgcolor">
 			<div class="sidebar-left"><Sidebar bind:show /></div>
 			<div class="content-right">
-				<div class="nav-bar fixed py-2.5 top-0"><Navbar {title} /></div>
+				<div class="nav-bar content-right fixed py-2.5 top-0">
+					<Navbar {title} />
+				</div>
 				<!-- <div class=" mx-auto w-full md:px-0 mt-10">
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
 	</div> -->
@@ -782,7 +743,7 @@
 				<div
 					class="set-new-margin {isMobile
 						? ''
-						: 'mt-10'} mb-32 w-full flex flex-col"
+						: 'mt-10'} mb-32 w-full flex flex-col {history ? 'set-margin' : ''}"
 				>
 					<Messages
 						bind:history
@@ -794,6 +755,7 @@
 						{regenerateResponse}
 					/>
 				</div>
+
 				<MessageInput
 					bind:prompt
 					bind:autoScroll
@@ -802,7 +764,14 @@
 					{submitPrompt}
 					{stopResponse}
 				/>
+
+				<div
+					class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
+				>
+					<p>内容由AI生成，仅供参考</p>
+				</div>
 			</div>
+
 			<!-- <div class=" py-2.5 flex flex-col justify-between w-full set-width">
 	<div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />

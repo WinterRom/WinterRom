@@ -27,7 +27,6 @@
 		// 	tooltip.destroy();
 		// }; // 清理函数，确保组件销毁时销毁tooltip
 	});
-	console.log("get(userName)", get(userName));
 	$: if ($userName) {
 		userNames = get(userName);
 	}
@@ -38,18 +37,10 @@
 	};
 </script>
 <style>
-	.content-right {
-		/* width: var(--main-width); */
-		/* max-width: 59%; */
-		/* background-color: #000; */
-		background-color: #f4f6fc;
-		/* padding: 0 6%; */
-		width: 84%;
-	}
 </style>
 <nav
 	id="nav"
-	class="content-right w-full flex flex-row justify-center bg-white/95 dark:bg-gray-800/90 dark:text-gray-200 backdrop-blur-xl z-30"
+	class="w-full flex flex-row justify-center bg-white/95 dark:bg-gray-800/90 dark:text-gray-200 backdrop-blur-xl z-30"
 >
 	<div class=" flex w-full mx-auto justify-between">
 		<div class="flex">
@@ -57,7 +48,6 @@
 				<button
 					class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 					on:click={async () => {
-						console.log("newChat");
 						goto("/");
 						await chatId.set(uuidv4());
 					}}

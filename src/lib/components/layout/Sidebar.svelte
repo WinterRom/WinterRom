@@ -7,7 +7,7 @@
 		deleteConversation,
 		getChatList
 	} from "$lib/api/chat";
-
+	import { page } from "$app/stores";
 	import fileSaver from "file-saver";
 	const { saveAs } = fileSaver;
 	//	@ts-ignore
@@ -17,6 +17,7 @@
 	import { get } from "svelte/store";
 	import { userInfor, userName } from "$lib/stores";
 	export let show = false;
+	export let conversationId = "";
 	let navElement;
 	let importFileInputElement: any;
 	let importFiles: any;
@@ -25,14 +26,18 @@
 	let search = "";
 
 	let chatDeleteId: string = "";
-
+	// let windowWidth = 0;
+	// $: isMobile = windowWidth <= 1040;
 	let chatTitleEditId: any = "";
 	let chatTitle = "";
 	let chatList: any = [];
 	let showDeleteHistoryConfirm = false;
 	let userNames: string = "";
-
+	let selectStatus: any[] = [];
 	onMount(async () => {
+		// handleResize
+		console.log("conversationId", conversationId);
+
 		if (window.innerWidth > 1280) {
 			show = true;
 		}
@@ -42,21 +47,23 @@
 	$: if ($userName) {
 		userNames = get(userName);
 	}
+	// function handleResize() {
+	// 	windowWidth = window.innerWidth;
+	// 	show = windowWidth > 1040;
+	// }
 	const getChatConversationsList = async () => {
 		const { data } = await getChatList();
-		console.log("conversationsList", data);
 		chatList = data;
 		// let data = JSON.parse(conversationsList);
-		console.log("conversationsList", data);
 		// console.log("data-getChatConversationsList", data);
 	};
-	const loadChat = async (id: any) => {
-		console.log("id-loadChat", id);
-
+	const loadChat = async (id: any, i: number) => {
 		// 设置当前的 chatId store，以便页面能够感知到切换
 		await chatId.set(id);
 		goto(`/c/${id}`);
-		show = false;
+
+		show = window.innerWidth > 1040;
+		selectStatus[i] = true;
 	};
 
 	const editChatTitle = async (id: any, name: any) => {
@@ -65,14 +72,12 @@
 			conversationId: id
 		};
 		const { data } = await updateChatName(query);
-		console.log("editChatTitle", data);
 		getChatConversationsList();
 		chatTitle = "";
 	};
 
 	const deleteChat = async (id: any) => {
 		const { data } = await deleteConversation({ conversationId: id });
-		console.log("data-deleteChat", data);
 		getChatConversationsList();
 		// goto("/");
 	};
@@ -93,12 +98,9 @@
 	};
 
 	$: if (importFiles) {
-		console.log(importFiles);
-
 		let reader = new FileReader();
 		reader.onload = (event: any) => {
 			let chats: any = JSON.parse(event.target.result);
-			console.log(chats);
 			importChats(chats);
 		};
 		// var file = document.getElementById('fileInput').files[0];
@@ -141,6 +143,9 @@
 	.set-right-radius {
 		border-top-right-radius: 16px;
 		border-bottom-right-radius: 16px;
+	}
+	.set-select-bgc {
+		background: #e0e4f0;
 	}
 </style>
 <div
@@ -408,23 +413,31 @@
 						}
 					}
 				}) as chat, i}
-				<div class=" w-full pr-2 relative">
+				<div
+					class=" w-full pr-2 relative {selectStatus[i] ||
+					chat.id === conversationId
+						? 'set-select-bgc'
+						: ''}"
+				>
 					<button
 						class=" w-full flex justify-between rounded-md px-3 py-2 hover:bg-gray-1000 hover:900bg-gray- {chat.id
 							? ''
 							: 'bg-gray-1050'} transition whitespace-nowrap text-ellipsis"
 						on:click={() => {
+							selectStatus.length = chatList.length;
+							console.log("1", selectStatus);
+
 							// goto(`/c/${chat.id}`);
 							if (chat.id !== chatTitleEditId) {
 								chatTitleEditId = "";
 								chatTitle = "";
+								selectStatus = [];
+								console.log("2", selectStatus);
 							}
-							console.log("chatTitleEditId", chatTitleEditId);
-
 							if (chat.id && !chatTitleEditId) {
-								console.log(111);
-
-								loadChat(chat.id);
+								selectStatus[i] = true;
+								console.log("3", selectStatus, selectStatus[i]);
+								loadChat(chat.id, i);
 							}
 						}}
 					>
@@ -469,8 +482,6 @@
 									<button
 										class=" self-center hover:text-customBlue transition"
 										on:click={() => {
-											console.log("chatTitleEditId", chatTitleEditId);
-
 											editChatTitle(chat.id, chatTitle);
 											chatTitleEditId = "";
 											chat.name = "";

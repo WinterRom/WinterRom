@@ -29,22 +29,14 @@ service.interceptors.request.use(
 // Response interceptors
 service.interceptors.response.use(
 	response => {
-		console.log("response-request", response);
-		console.log("response-request-status", response.status);
 		const res = response.data;
 		const contentType = response.headers["content-type"];
-
 		// 如果是流式数据，直接返回 response
 		if (contentType && contentType.includes("stream")) {
 			return response;
 		}
-		console.log("res-request", res);
-
 		if (res?.code !== "000000" || response.status !== 200) {
-			console.log("抛出错误-外层");
 			if (["50008", "50012", "50014", "000104"].includes(String(res.code))) {
-				console.log("抛出错误");
-
 				toast.error(res.message || "Error");
 				reset();
 			}

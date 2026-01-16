@@ -83,7 +83,6 @@
 			},
 			addChats: async function (_chats: any) {
 				for (const chat of _chats) {
-					console.log(chat);
 					await this.addChat(chat);
 				}
 				await chats.set(await this.getChats());

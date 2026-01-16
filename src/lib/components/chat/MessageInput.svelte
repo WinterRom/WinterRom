@@ -1,41 +1,59 @@
 <script lang="ts">
+	import { uploadFile } from "$lib/api/chat"; // 引入上传接口
+	import toast from "svelte-french-toast";
 	export let submitPrompt: Function;
 	export let stopResponse: Function;
-
 	export let autoScroll = true;
-
 	export let prompt = "";
 	export let messages: any = [];
 	export let isMobile: boolean;
+
 	let importFileInputElement: any;
 	let importFiles: any;
-	import toast from "svelte-french-toast";
-	$: if (importFiles) {
-		const formData = new FormData();
-		formData.append("file", importFiles[0]);
-		formData.append("prompt", prompt); // 将当前输入框内容也一起上传
-
-		// 显示上传状态
-		toast.loading("正在上传文件...");
-
-		try {
-			// const response = await fetch("/api/upload", {
-			// 	method: "POST",
-			// 	body: formData
-			// });
-			// if (response.ok) {
-			// 	const result = await response.json();
-			// 	toast.success("文件上传成功");
-			// 	// 将文件内容自动填充到输入框
-			// 	prompt = result.text || prompt;
-			// } else {
-			// 	throw new Error("上传失败");
-			// }
-		} catch (error) {
-			console.error("上传错误:", error);
-			toast.error("文件上传失败");
-		}
+	// 新增：存储已上传成功的文件信息（用于预览和发送）
+	let selectedFiles: any[] = [];
+	let isUploading = false;
+	// 删除预览图片
+	const removeFile = (index: number) => {
+		selectedFiles = selectedFiles.filter((_, i) => i !== index);
+	};
+	// 监听文件选择，一旦选择立即上传
+	$: if (importFiles && importFiles.length > 0) {
+		const file = importFiles[0];
+		handleUpload(file);
+		importFileInputElement.value = "";
 	}
+	const handleUpload = async (file: File) => {
+		isUploading = true;
+		const loadingId = toast.loading("正在上传...");
+		try {
+			const res: any = await uploadFile(file);
+			// 假设接口返回结构中包含 url (例如 res.data.url 或 res.url)
+			// 请根据实际后端返回调整
+			const fileData = res.data;
+			console.log("res-file", res);
+
+			if (fileData.id) {
+				selectedFiles = [
+					...selectedFiles,
+					{
+						type: "image",
+						name: fileData.name,
+						url: `./api/previewFile/${fileData.id}`
+						// 如果后端返回了 id，也可以存入
+						// id: res.id
+					}
+				];
+				toast.success("上传成功", { id: loadingId });
+			} else {
+				throw new Error("返回数据缺少 URL");
+			}
+		} catch (error) {
+			toast.error("上传失败", { id: loadingId });
+		} finally {
+			isUploading = false;
+		}
+	};
 	// const importChats = async (chatHistory) => {
 	// 	await $db.addChats(chatHistory);
 	// };
@@ -46,7 +64,8 @@
 		}
 		if (prompt !== "" && e.keyCode == 13 && !e.shiftKey) {
 			messages.at(-1).done == true;
-			submitPrompt(prompt);
+			submitPrompt(prompt, selectedFiles);
+			selectedFiles = [];
 		}
 	}
 	function InputEvent(e: any) {
@@ -57,6 +76,13 @@
 			e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
 		}
 	}
+	const submitHandler = () => {
+		if (isUploading) return;
+		// 将 prompt 和 selectedFiles 一起传递
+		submitPrompt(prompt, selectedFiles);
+		// 发送后清空已选文件
+		selectedFiles = [];
+	};
 </script>
 <style>
 	.set-new-bg {
@@ -71,7 +97,8 @@
 		max-width: 59%; */
 		/* background-color: #000; */
 		background-color: #f4f6fc;
-		width: 63%;
+		/* width: calc(68% + 4px); */
+		width: inherit;
 	}
 	.set-no-padding {
 		padding: 0;
@@ -81,13 +108,20 @@
 		margin: 0 2%;
 	}
 	.set-new-bottom {
-		bottom: 32px;
+		bottom: 34px;
+	}
+	.set-new-chat {
+		width: inherit;
 	}
 </style>
 <div
 	class=" {messages.length > 0
-		? 'fixed set-new-bottom'
-		: ''} set-padding-right {isMobile ? 'set-mobile' : 'content-right'}"
+		? 'fixed set-new-bottom '
+		: isMobile
+		? ''
+		: 'set-new-chat'} set-padding-right {isMobile
+		? 'set-mobile'
+		: 'content-right'}"
 >
 	<div
 		class="px-2.5 pt-2.5 set-no-padding -mb-0.5 mx-auto inset-x-0 bg-transparent flex justify-center"
@@ -126,10 +160,41 @@
 				<form
 					class=" flex flex-col relative rounded-xl border dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-gray-100"
 					on:submit|preventDefault={() => {
-						submitPrompt(prompt);
+						// selectedFiles = [];
+						// submitPrompt(prompt);
+						submitHandler();
 					}}
 				>
 					<div class="">
+						{#if selectedFiles.length > 0}
+							<div class="mx-2 mb-2 flex flex-wrap gap-2">
+								{#each selectedFiles as file, index}
+									<div class="relative group">
+										<img
+											src={file.url}
+											alt={file.name}
+											class="h-16 w-16 object-cover rounded-md border border-gray-200 dark:border-gray-600"
+										/>
+										<button
+											class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 w-4 h-4 flex items-center justify-center text-xs shadow-sm hover:bg-red-600 cursor-pointer"
+											on:click={() => removeFile(index)}
+											type="button"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 20 20"
+												fill="currentColor"
+												class="w-3 h-3"
+											>
+												<path
+													d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+												/>
+											</svg>
+										</button>
+									</div>
+								{/each}
+							</div>
+						{/if}
 						<textarea
 							id="chat-textarea"
 							class=" dark:bg-gray-800 dark:text-gray-100 outline-none w-full py-3 px-2 pl-4 rounded-xl resize-none"
@@ -147,8 +212,35 @@
 									class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1 mr-0.5 w-7 h-7 self-center"
 									on:click={() => importFileInputElement.click()}
 									title="上传文件"
+									disabled={isUploading}
 								>
 									<svg
+										width="20"
+										height="20"
+										viewBox="0 0 20 20"
+										fill="none"
+										xmlns="http://www.w3.org/2000/svg"
+									>
+										<path
+											d="M1.85278 4.81463C1.85278 3.58733 2.84771 2.59241 4.07501 2.59241H15.9269C17.1542 2.59241 18.1491 3.58733 18.1491 4.81463V15.185C18.1491 16.4123 17.1542 17.4072 15.9269 17.4072H4.075C2.8477 17.4072 1.85278 16.4123 1.85278 15.185V4.81463Z"
+											stroke="currentColor"
+											stroke-width="1.6"
+										/>
+										<circle
+											cx="13.7136"
+											cy="7.14282"
+											r="2.1"
+											fill="currentColor"
+											stroke="white"
+											stroke-width="0.8"
+										/>
+										<path
+											d="M1.85278 14.2326L5.08504 9.72923C5.81909 8.70649 7.25533 8.49716 8.25077 9.26783L17.5001 16.4286"
+											stroke="currentColor"
+											stroke-width="1.6"
+										/>
+									</svg>
+									<!-- 上传文件图标<svg
 										viewBox="0 0 24 24"
 										xmlns="http://www.w3.org/2000/svg"
 										width="24"
@@ -157,27 +249,15 @@
 										class="remixicon h-5 w-5"
 										><path
 											d="M14 13.5V8C14 5.79086 12.2091 4 10 4C7.79086 4 6 5.79086 6 8V13.5C6 17.0899 8.91015 20 12.5 20C16.0899 20 19 17.0899 19 13.5V4H21V13.5C21 18.1944 17.1944 22 12.5 22C7.80558 22 4 18.1944 4 13.5V8C4 4.68629 6.68629 2 10 2C13.3137 2 16 4.68629 16 8V13.5C16 15.433 14.433 17 12.5 17C10.567 17 9 15.433 9 13.5V8H11V13.5C11 14.3284 11.6716 15 12.5 15C13.3284 15 14 14.3284 14 13.5Z"
-										/></svg
-									>
-									<!-- <svg
-										xmlns="http://www.w3.org/2000/svg"
-										viewBox="0 0 24 24"
-										fill="currentColor"
-										class="w-5 h-5"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z"
-											clip-rule="evenodd"
-										/>
-									</svg> -->
+										/></svg 
+									>-->
 								</button>
 								<input
 									type="file"
 									bind:this={importFileInputElement}
 									class="hidden"
 									bind:files={importFiles}
-									accept=".txt,.pdf,.doc,.docx,.xls,.xlsx"
+									accept="image/*"
 								/>
 								<button
 									class="{prompt !== ''

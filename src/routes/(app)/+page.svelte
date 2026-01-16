@@ -65,21 +65,17 @@
 
 	function handleResize() {
 		windowWidth = window.innerWidth;
-
-		console.log("isMobile", isMobile);
-		console.log("windowWidth", windowWidth);
 		show = windowWidth > 1040;
+		// await tick();
 	}
-
-	// console.log('show--', show)
 	onMount(async () => {
 		await chatId.set(uuidv4());
-
 		chatId.subscribe(async () => {
 			await initNewChat();
 		});
 		window.addEventListener("resize", handleResize);
 		handleResize(); // 初始化尺寸
+
 		// getChatConversationsList();
 	});
 	onDestroy(() => {
@@ -89,12 +85,7 @@
 	//////////////////////////
 	// Web functions
 	//////////////////////////
-	const getChatConversationsList = async () => {
-		const conversationsList: any = await getChatList();
-		// let data = JSON.parse(conversationsList);
-		console.log("conversationsList", conversationsList);
-		// console.log("data-getChatConversationsList", data);
-	};
+
 	const initNewChat = async () => {
 		autoScroll = true;
 
@@ -133,9 +124,7 @@
 		}
 		navigator.clipboard.writeText(text).then(
 			function () {},
-			function (err) {
-				console.log();
-			}
+			function (err) {}
 		);
 	};
 
@@ -160,7 +149,6 @@
 		_chatId: any
 	) => {
 		isStreaming = true;
-		console.log("sendPromptOllama");
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
 			parentId: parentId,
@@ -197,33 +185,24 @@
 			}
 			try {
 				let lines = response?.data.split("\n");
-				console.log("lines", lines);
 				// debugger;
 				for (const line of lines) {
 					if (line) {
 						if (line.startsWith("event:")) {
 							continue;
 						}
-						// console.log("line", line);
 						const jsonString = line.replace("data: ", ""); // 去除前缀
 						// 关键过滤逻辑：跳过 event: 开头的行
-						// console.log("jsonString", JSON.parse(jsonString));
-						console.log("jsonString", jsonString);
 						// debugger;
 						if (!jsonString) continue; // 跳过空行
 						let data = JSON.parse(jsonString);
-						console.log("data-lins-for", data);
-						console.log("data.event", data.event);
-						console.log("conversationId", conversationId);
 						if (data.event === "workflow_started") {
-							console.log("data.event", data.task_id);
 							stopChatTaskId = data.task_id;
 							conversationId = data.conversation_id;
 							messages.at(-1).done = false;
 						}
 						if (data.event === "error") {
 							// if (!responseMessage.content) {
-							console.log(111);
 							responseMessage.error = true;
 							responseMessage.done = true;
 							responseMessage.content =
@@ -242,11 +221,9 @@
 							// 		break;
 							// 	case "node_finished":
 							// 		// 处理节点完成事件
-							// 		// console.log(`节点 ${event.data.node_id} 完成`);
 							// 		break;
 							// 	case "workflow_finished":
 							// 		// 处理工作流完成事件
-							// 		console.log("工作流执行完成");
 							// 		// isStreaming = false;
 							// 		isStreaming = false;
 							// 		responseMessage.done = true;
@@ -254,22 +231,18 @@
 							// 	// ... 其他事件处理
 							// }
 							if (data.event === "message") {
-								console.log("data.event ", data.event);
 								const PRINT_SPEED = 30; // 打字速度
 								let autoScroll = true;
-
 								// 【重要】将缓冲区的内容和新收到的内容拼接
 								// 注意：如果您的 data.answer 是 Markdown，这里建议直接拼接文本即可，不要做 HTML 解析逻辑
 								// 如果您确定 data.answer 是 HTML 或者您在后端已经转换过，则使用以下逻辑：
 								let fullTextChunk = tagBuffer + data.answer;
 								tagBuffer = ""; // 清空缓冲
-
 								let i = 0;
 								while (i < fullTextChunk.length) {
 									// 检查是否遇到标签起始
 									if (fullTextChunk[i] === "<") {
 										const endTagIndex = fullTextChunk.indexOf(">", i);
-
 										if (endTagIndex !== -1) {
 											// 1. 找到了完整的标签，一次性追加到 content，不触发延迟
 											// 这样用户瞬间看到的是样式变化，而不是标签字符
@@ -286,22 +259,18 @@
 											break; // 结束本次循环，等待下一次数据
 										}
 									}
-
 									// 普通字符，逐个追加并延迟
 									responseMessage.content += fullTextChunk[i];
 									i++;
-
 									// 强制更新 Svelte 视图
 									messages = messages;
 									await tick();
-
 									if (autoScroll) {
 										window.scrollTo({
 											top: document.body.scrollHeight,
 											behavior: "smooth" // 或 "auto" 以获得更好的性能
 										});
 									}
-
 									// 只有普通文字才延迟，HTML标签不延迟
 									await new Promise(resolve =>
 										setTimeout(resolve, PRINT_SPEED)
@@ -314,7 +283,6 @@
 								// // 1. 先将 Markdown 解析为完整的 HTML
 								// let fullHtml: any = data.answer;
 								// // 2. 标签感知打字机逻辑
-
 								// let i = 0;
 								// while (i < fullHtml.length) {
 								// 	if (fullHtml[i] === "<") {
@@ -354,7 +322,6 @@
 										"您好，没有您想要的答案呢！可以换个问题问一问呢！";
 									messages = messages;
 								}
-
 								window.requestAnimationFrame(() => {
 									window.scrollTo({
 										top: document.body.scrollHeight,
@@ -378,7 +345,6 @@
 					}
 				}
 			} catch (error: any) {
-				console.log(error);
 				if ("detail" in error) {
 					toast.error(error.detail);
 				}
@@ -387,7 +353,6 @@
 			if (autoScroll) {
 				window.scrollTo({ top: document.body.scrollHeight });
 			}
-
 			await $db.updateChatById(_chatId, {
 				title: title === "" ? "新会话" : title,
 				models: selectedModels,
@@ -415,39 +380,33 @@
 		}
 	};
 	// 用户发送问答
-	const submitPrompt = async (userPrompt: any) => {
-		console.log("userPrompt-停止以后", userPrompt);
+	const submitPrompt = async (userPrompt: any, files: any = []) => {
 		if (!userPrompt) {
 			return;
 		}
-
 		const _chatId: any = JSON.parse(JSON.stringify($chatId));
-		// console.log("submitPrompt", _chatId);
 		// await generateChatTitle(_chatId, userPrompt);
 		// if (selectedModels.includes("")) {
 		// 	toast.error("Model not selected");
 		// } else if (messages.length != 0 && messages.at(-1).done != true) {
-		// 	console.log("wait");
 		// } else {
 		const chatElement: any = document.getElementById("chat-textarea");
 		chatElement.style.height = "";
-
-		let userMessageId = uuidv4();
+		let userMessageId = conversationId || uuidv4();
 		let userMessage: any = {
 			id: userMessageId,
 			parentId: messages.length !== 0 ? messages.at(-1).id : null,
 			childrenIds: [],
 			role: "user",
-			content: userPrompt
+			content: userPrompt,
+			// 将文件数据存入消息对象，Messages.svelte 会自动读取并显示
+			files: files
 		};
-
 		if (messages.length !== 0) {
 			history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
 		}
-
 		history.messages[userMessageId] = userMessage;
 		history.currentId = userMessageId;
-
 		await tick();
 		if (messages.length == 1) {
 			await $db.createNewChat({
@@ -467,39 +426,32 @@
 				history: history
 			});
 		}
-
 		prompt = "";
-
 		setTimeout(() => {
 			window.scrollTo({
 				top: document.body.scrollHeight,
 				behavior: "smooth"
 			});
 		}, 50);
-
 		await sendPrompt(userPrompt, userMessageId, _chatId);
 		// }
 	};
-
 	const stopResponse = async () => {
 		const response: any = await stopChat({ taskId: stopChatTaskId });
-		console.log("response-stopResponse", response);
 		messages.at(-1).done = true;
-		console.log("messages.at(-1).done", messages.at(-1).done);
-
 		stopResponseFlag = true;
 	};
 
 	const regenerateResponse = async () => {
 		const _chatId = JSON.parse(JSON.stringify($chatId));
-
+		console.log(111);
+		console.log("messages.length ", messages.length);
+		console.log("messages.at(-1).done ", messages.at(-1).done);
 		if (messages.length != 0 && messages.at(-1).done == true) {
 			messages.splice(messages.length - 1, 1);
 			messages = messages;
-
 			let userMessage = messages.at(-1);
 			let userPrompt = userMessage.content;
-
 			await sendPrompt(userPrompt, userMessage.id, _chatId);
 		}
 	};
@@ -530,7 +482,6 @@
 			// 		if ("detail" in error) {
 			// 			toast.error(error.detail);
 			// 		}
-			// 		console.log(error);
 			// 		return null;
 			// 	});
 			await setChatTitle(_chatId, userPrompt === "" ? "新会话" : userPrompt);
@@ -553,7 +504,7 @@
 		background-color: #f4f6fc;
 	}
 	.set-new-margin {
-		margin-bottom: 4.5rem;
+		margin-bottom: 12rem;
 		background-color: #f4f6fc;
 	}
 	.sidebar-left {
@@ -565,14 +516,20 @@
 		width: var(--main-width);
 		/* background-color: #000; */
 		background-color: #f4f6fc;
-		padding: 0 6%;
+		/* padding: 0 6%; */
+		/* width: inherit; */
 	}
 	.nav-bar {
 		width: var(--main-width);
-		width: 74%;
+		/* width: 74%; */
 	}
 	.set-margin {
 		margin-bottom: 12rem !important;
+		margin-top: 44px;
+	}
+	.set-bg {
+		background-color: #f4f6fc;
+		line-height: 2.5rem;
 	}
 </style>
 <svelte:window
@@ -595,10 +552,7 @@
 					<button
 						class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 						on:click={async () => {
-							console.log(111);
-
 							show = !show;
-							console.log("showLeft", showLeft);
 						}}
 					>
 						<svg
@@ -706,8 +660,7 @@
 
 			<!-- </div> -->
 			<div
-				class="fixed bottom-0 w-full text-sm text-center text-[#c0c0c0]"
-				style="bottom: 0.875rem;"
+				class="fixed set-bg bg-[#f4f6fc] bottom-0 w-full text-sm text-center text-[#c0c0c0]"
 			>
 				<p>内容由AI生成，仅供参考</p>
 			</div>
@@ -719,8 +672,8 @@
 {:else}
 	<div class="min-h-screen w-full flex justify-center bgcolor">
 		<div class="sidebar-left"><Sidebar bind:show /></div>
-		<div class="content-right">
-			<div class="nav-bar fixed py-2.5 top-0"><Navbar {title} /></div>
+		<div class="content-right set-input-width" id="setInputWidth">
+			<div class="nav-bar content-right fixed top-0"><Navbar {title} /></div>
 			<!-- <div class=" mx-auto w-full md:px-0 mt-10">
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
 	</div> -->
@@ -735,6 +688,7 @@
 					{sendPrompt}
 					{regenerateResponse}
 				/>
+
 				<MessageInput
 					bind:prompt
 					bind:autoScroll
@@ -744,13 +698,13 @@
 					{stopResponse}
 				/>
 			</div>
+			<div
+				class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
+			>
+				<p>内容由AI生成，仅供参考</p>
+			</div>
 		</div>
-		<div
-			class="fixed bottom-0 w-full text-sm text-center text-[#c0c0c0]"
-			style="bottom: 0.875rem;"
-		>
-			<p>内容由AI生成，仅供参考</p>
-		</div>
+
 		<!-- <div class=" py-2.5 flex flex-col justify-between w-full set-width">
 	<div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
