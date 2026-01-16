@@ -610,7 +610,7 @@
 							/>
 						</div>
 						<div class="self-center font-medium text-sm s-CQzCIXq4wXlR">
-							小C+
+							AI智能体+
 						</div>
 					</div>
 				</div>

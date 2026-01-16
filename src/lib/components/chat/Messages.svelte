@@ -448,12 +448,12 @@
 			<img
 				src="/favicon.png"
 				class=" w-16 invert-[10%] dark:invert-[100%] rounded-full"
-				alt="小C+"
+				alt="AI智能体+"
 				draggable="false"
 			/>
 		</div>
 		<div class=" mt-2 text-1xl text-gray-800 dark:text-gray-100 font-semibold">
-			<p>小C+，您的智能助手！</p>
+			<p>AI智能体+，您的智能助手！</p>
 			<p>有问必答,高效办理。请直接输入您的问题。</p>
 		</div>
 	</div>
@@ -507,7 +507,7 @@
 									{#if message.role === "user"}
 										{userNames}
 									{:else}
-										小C+
+										AI智能体+
 										<!-- <span class=" text-gray-500 text-sm font-medium"
 									>{message.model ? ` ${message.model}` : ""}</span
 								> -->

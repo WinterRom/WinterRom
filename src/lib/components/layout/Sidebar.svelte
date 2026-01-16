@@ -22,7 +22,7 @@
 	let importFileInputElement: any;
 	let importFiles: any;
 
-	let title: string = "新小C";
+	let title: string = "新AI智能体";
 	let search = "";
 
 	let chatDeleteId: string = "";
@@ -170,7 +170,7 @@
 					<div class="self-center mr-3.5">
 						<img src="/favicon.png" alt="favicon" class=" w-5 rounded-full" />
 					</div>
-					<div class=" self-center font-medium text-sm">小C+</div>
+					<div class=" self-center font-medium text-sm">AI智能体+</div>
 				</div>
 			</button>
 		</div>
