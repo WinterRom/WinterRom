@@ -10,7 +10,7 @@
 
 	let importFileInputElement: any;
 	let importFiles: any;
-	// 新增：存储已上传成功的文件信息（用于预览和发送）
+	//存储已上传成功的文件信息（用于预览和发送）
 	let selectedFiles: any[] = [];
 	let isUploading = false;
 	// 删除预览图片
@@ -26,6 +26,18 @@
 	const handleUpload = async (file: File) => {
 		isUploading = true;
 		const loadingId = toast.loading("正在上传...");
+		//  1. 生成本地预览链接，实现“秒开”效果
+		const localUrl = URL.createObjectURL(file);
+		// const tempId = Date.now().toString(); // 生成临时ID用于后续定位更新
+		// 2. 立即将文件加入列表显示
+		// const newFile = {
+		// 	type: "image",
+		// 	name: file.name,
+		// 	url: localUrl, // 使用本地 Blob URL
+		// 	uploading: true, // 标记正在上传
+		// 	tempId: tempId // 临时ID
+		// };
+		// selectedFiles = [...selectedFiles, newFile];
 		try {
 			const res: any = await uploadFile(file);
 			// 假设接口返回结构中包含 url (例如 res.data.url 或 res.url)
@@ -39,9 +51,9 @@
 					{
 						type: "image",
 						name: fileData.name,
-						url: `./api/previewFile/${fileData.id}`
+						url: localUrl,
 						// 如果后端返回了 id，也可以存入
-						// id: res.id
+						id: fileData.id
 					}
 				];
 				toast.success("上传成功", { id: loadingId });
@@ -111,7 +123,7 @@
 		bottom: 34px;
 	}
 	.set-new-chat {
-		width: inherit;
+		width: 100%;
 	}
 </style>
 <div
@@ -167,7 +179,7 @@
 				>
 					<div class="">
 						{#if selectedFiles.length > 0}
-							<div class="mx-2 mb-2 flex flex-wrap gap-2">
+							<div class="mx-2 mt-2 mb-2 flex flex-wrap gap-2">
 								{#each selectedFiles as file, index}
 									<div class="relative group">
 										<img

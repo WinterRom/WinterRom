@@ -181,12 +181,17 @@
 	// Ollama functions
 	//////////////////////////
 
-	const sendPrompt = async (userPrompt: any, parentId: any, _chatId: any) => {
+	const sendPrompt = async (
+		userPrompt: any,
+		parentId: any,
+		_chatId: any,
+		fileId?: string
+	) => {
 		// await Promise.all(
 		// 	// selectedModels.map(async model => {
 		// 	// })
 		// )
-		await sendPromptOllama(userPrompt, parentId, _chatId);
+		await sendPromptOllama(userPrompt, parentId, _chatId, fileId);
 		await chats.set(await $db.getChats());
 	};
 
@@ -194,7 +199,8 @@
 		// model: any,
 		userPrompt: any,
 		parentId: any,
-		_chatId: any
+		_chatId: any,
+		fileId?: string
 	) => {
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
@@ -218,7 +224,8 @@
 		window.scrollTo({ top: document.body.scrollHeight });
 		const response: any = await getChat({
 			message: userPrompt,
-			conversationId: conversationId
+			conversationId: conversationId,
+			fileId: fileId
 		});
 		while (true) {
 			// let { value, done } = await reader.read();
@@ -379,7 +386,7 @@
 		}
 	};
 
-	const submitPrompt = async (userPrompt: any) => {
+	const submitPrompt = async (userPrompt: any, files: any) => {
 		const _chatId = JSON.parse(JSON.stringify($chatId));
 		// await generateChatTitle(_chatId, userPrompt);
 		// if (selectedModels.includes("")) {
@@ -394,7 +401,8 @@
 			parentId: messages.length !== 0 ? messages.at(-1).id : null,
 			childrenIds: [],
 			role: "user",
-			content: userPrompt
+			content: userPrompt,
+			files: files
 		};
 		if (messages.length !== 0) {
 			history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
@@ -432,7 +440,7 @@
 			});
 		}, 50);
 
-		await sendPrompt(userPrompt, userMessageId, _chatId);
+		await sendPrompt(userPrompt, userMessageId, _chatId, files[0]?.id);
 	};
 	// };
 
@@ -755,7 +763,6 @@
 						{regenerateResponse}
 					/>
 				</div>
-
 				<MessageInput
 					bind:prompt
 					bind:autoScroll
@@ -764,7 +771,6 @@
 					{submitPrompt}
 					{stopResponse}
 				/>
-
 				<div
 					class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
 				>

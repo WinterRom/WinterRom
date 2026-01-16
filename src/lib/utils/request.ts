@@ -10,7 +10,7 @@ const redirectUrl: any = import.meta.env.VITE_API_REDIRECT_URL;
 // 创建核心请求实例
 const service = axios.create({
 	baseURL: BASE_URL,
-	timeout: 20000
+	timeout: 50000
 });
 
 // Request interceptors
@@ -46,6 +46,21 @@ service.interceptors.response.use(
 		}
 	},
 	error => {
+		// 拦截超时逻辑
+		if (error.message.includes("timeout") || error.code === "ECONNABORTED") {
+			toast.error("请求超时，请稍后重试");
+
+			// 方式 A：返回一个 resolve 的 Promise，带上自定义的超时响应结构
+			// 这样前端调用处不会进 catch，而是进 then，可以通过 code 判断
+			return Promise.resolve({
+				code: "TIMEOUT",
+				message: "服务超时请稍后再试！",
+				data: null
+			});
+
+			// 方式 B（如果希望前端走 catch 逻辑，请使用下面的代码）：
+			// return Promise.reject(new Error("请求超时"));
+		}
 		const { data } = error.response || {};
 		if (data && data.code === "000104") {
 			reset();

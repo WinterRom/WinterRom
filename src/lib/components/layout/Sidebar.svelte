@@ -154,6 +154,7 @@
 		? ''
 		: '-translate-x-[260px]'}  w-[260px] fixed top-0 left-0 z-40 transition bg-[#0a0a0a] text-gray-200 text-sm set-new-bg
         "
+	style="width:{show ? '18rem' : ''}"
 >
 	<div class="py-2.5 my-auto flex flex-col justify-between h-screen">
 		<!--小c+-->
@@ -462,6 +463,7 @@
 								class=" text-left self-center overflow-hidden {chat.id
 									? 'w-[180px]'
 									: 'w-[120px]'} "
+								style="width: 10.5rem;"
 							>
 								{#if chatTitleEditId === chat.id}
 									<input
@@ -469,7 +471,7 @@
 										class=" bg-transparent w-full"
 									/>
 								{:else}
-									{chat.name}
+									<span class="truncate">{chat.name}</span>
 								{/if}
 							</div>
 						</div>

@@ -3,7 +3,7 @@
 	import { openDB, deleteDB } from "idb";
 	import { onMount, tick } from "svelte";
 	import { goto } from "$app/navigation";
-	import { getInfo, getInfos } from "$lib/api/user";
+
 	import {
 		info,
 		showSettings,
@@ -44,7 +44,7 @@
 		// console.log("get", getToken());
 		// console.log("token", token);
 		// debugger;
-		await thirdLogin(token || code);
+		await thirdLogin(params);
 		if (token || getToken()) {
 			loaded = true;
 		}

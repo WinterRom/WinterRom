@@ -132,10 +132,15 @@
 	// Ollama functions
 	//////////////////////////
 
-	const sendPrompt = async (userPrompt: any, parentId: any, _chatId: any) => {
+	const sendPrompt = async (
+		userPrompt: any,
+		parentId: any,
+		_chatId: any,
+		fileId?: string
+	) => {
 		await Promise.all(
 			selectedModels.map(async model => {
-				await sendPromptOllama(model, userPrompt, parentId, _chatId);
+				await sendPromptOllama(model, userPrompt, parentId, _chatId, fileId);
 			})
 		);
 
@@ -146,7 +151,8 @@
 		model: any,
 		userPrompt: any,
 		parentId: any,
-		_chatId: any
+		_chatId: any,
+		fileId?: string
 	) => {
 		isStreaming = true;
 		let responseMessageId = uuidv4();
@@ -173,8 +179,11 @@
 		window.scrollTo({ top: document.body.scrollHeight });
 		const response: any = await getChat({
 			message: userPrompt,
-			conversationId: conversationId
+			conversationId: conversationId,
+			fileId: fileId
 		});
+		console.log("response", response);
+
 		let tagBuffer = "";
 		while (true) {
 			// let { value, done } = await reader.read();
@@ -184,7 +193,7 @@
 				break;
 			}
 			try {
-				let lines = response?.data.split("\n");
+				let lines = response?.data?.split("\n");
 				// debugger;
 				for (const line of lines) {
 					if (line) {
@@ -197,13 +206,15 @@
 						if (!jsonString) continue; // 跳过空行
 						let data = JSON.parse(jsonString);
 						if (data.event === "workflow_started") {
+							console.log("data", data);
+
 							stopChatTaskId = data.task_id;
 							conversationId = data.conversation_id;
 							messages.at(-1).done = false;
 						}
 						if (data.event === "error") {
 							// if (!responseMessage.content) {
-							responseMessage.error = true;
+							// responseMessage.error = true;
 							responseMessage.done = true;
 							responseMessage.content =
 								"您好，没有您想要的答案呢！可以换个问题问一问呢！";
@@ -240,6 +251,7 @@
 								tagBuffer = ""; // 清空缓冲
 								let i = 0;
 								while (i < fullTextChunk.length) {
+									if (stopResponseFlag) break;
 									// 检查是否遇到标签起始
 									if (fullTextChunk[i] === "<") {
 										const endTagIndex = fullTextChunk.indexOf(">", i);
@@ -315,13 +327,13 @@
 								// 		setTimeout(resolve, PRINT_SPEED)
 								// 	);
 								// }
-								if (!responseMessage.content) {
-									responseMessage.error = true;
-									responseMessage.done = true;
-									responseMessage.content =
-										"您好，没有您想要的答案呢！可以换个问题问一问呢！";
-									messages = messages;
-								}
+								// if (!responseMessage.content) {
+								// 	// responseMessage.error = true;
+								// 	responseMessage.done = true;
+								// 	responseMessage.content =
+								// 		"哎呀，问题已超纲！我已经认真记在小本本上啦，请期待我的进步哦！";
+								// 	messages = messages;
+								// }
 								window.requestAnimationFrame(() => {
 									window.scrollTo({
 										top: document.body.scrollHeight,
@@ -345,6 +357,13 @@
 					}
 				}
 			} catch (error: any) {
+				console.log("error", error);
+				console.log("error-response", response);
+				// responseMessage.error = true;
+				responseMessage.done = true;
+				responseMessage.content = response.message;
+				messages = messages;
+				// }
 				if ("detail" in error) {
 					toast.error(error.detail);
 				}
@@ -385,6 +404,8 @@
 			return;
 		}
 		const _chatId: any = JSON.parse(JSON.stringify($chatId));
+		console.log("files", files);
+
 		// await generateChatTitle(_chatId, userPrompt);
 		// if (selectedModels.includes("")) {
 		// 	toast.error("Model not selected");
@@ -433,7 +454,7 @@
 				behavior: "smooth"
 			});
 		}, 50);
-		await sendPrompt(userPrompt, userMessageId, _chatId);
+		await sendPrompt(userPrompt, userMessageId, _chatId, files[0]?.id);
 		// }
 	};
 	const stopResponse = async () => {
@@ -688,16 +709,15 @@
 					{sendPrompt}
 					{regenerateResponse}
 				/>
-
-				<MessageInput
-					bind:prompt
-					bind:autoScroll
-					{isMobile}
-					{messages}
-					{submitPrompt}
-					{stopResponse}
-				/>
 			</div>
+			<MessageInput
+				bind:prompt
+				bind:autoScroll
+				{isMobile}
+				{messages}
+				{submitPrompt}
+				{stopResponse}
+			/>
 			<div
 				class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
 			>

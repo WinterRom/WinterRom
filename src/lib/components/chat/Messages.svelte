@@ -549,29 +549,12 @@
 								</div>
 							</div>
 						{:else}
-							<!--图片-->
 							<div
 								class="prose chat-{message.role} {message.role === 'user'
 									? ''
 									: 'set-line-height-none'} w-full max-w-full dark:prose-invert prose-headings:my-0 prose-p:my-0 prose-p:-mb-4 prose-pre:my-0 prose-table:my-0 prose-blockquote:my-0 prose-img:my-0 prose-ul:-my-4 prose-ol:-my-4 prose-li:-my-3 prose-ul:-mb-6 prose-ol:-mb-6 prose-li:-mb-4 whitespace-pre-line"
 							>
 								{#if message.role == "user"}
-									{#if message.files}
-										<div class="my-3 w-full flex overflow-x-auto space-x-2">
-											{#each message.files as file}
-												<div>
-													{#if file?.type === "image"}
-														<img
-															src={file?.url}
-															alt="input"
-															class=" max-h-96 rounded-lg"
-															draggable="false"
-														/>
-													{/if}
-												</div>
-											{/each}
-										</div>
-									{/if}
 									<!--用户输入问题对话后再编辑问题-->
 									{#if message?.edit === true}
 										<div class="flex w-full flex-wrap">
@@ -606,6 +589,25 @@
 										</div>
 									{:else}
 										<div class="w-full">
+											<!--图片-->
+											{#if message.files}
+												<div
+													class="w-full flex justify-end overflow-x-auto space-x-2"
+												>
+													{#each message.files as file}
+														<div class="w-16">
+															{#if file?.type === "image"}
+																<img
+																	src={file?.url}
+																	alt="input"
+																	class=" h-full w-full object-cover cursor-pointer"
+																	draggable="false"
+																/>
+															{/if}
+														</div>
+													{/each}
+												</div>
+											{/if}
 											<pre
 												class="w-full flex justify-end"
 												id="user-message">{message.content}</pre>

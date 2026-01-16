@@ -2,12 +2,12 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-03-04 10:25:25
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-09 13:42:06
+ * @LastEditTime: 2026-01-16 15:15:11
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\stores\permission.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import { goto } from "$app/navigation";
-import { getInfo, getInfos } from "$lib/api/user";
+import { getInfo, wxLogin } from "$lib/api/user";
 import {
 	info,
 	showSettings,
@@ -24,29 +24,38 @@ import toast from "svelte-french-toast";
 const redirectUrl: any = import.meta.env.VITE_APP_SSO_REDIRECT_URL;
 import { logout } from "$lib/api/user";
 
-export const thirdLogin = async (token: string | undefined | null = null) => {
+export const thirdLogin = async (params: any) => {
 	// console.log("token-thirdLogin", token);
 
 	// debugger;
+	console.log("params", params);
 
-	if (!token) {
-		token = getToken();
+	if (!params.token) {
+		params.token = getToken();
 	} else {
-		setToken(token);
+		setToken(params.token);
 	}
 	// console.log("getToken()", getToken());
 
 	// debugger;
-	if (!token) {
+	if (!params.token) {
 		showToast("登陆失败");
 		console.log("登陆失败", goto(redirectUrl), redirectUrl);
 		goto(redirectUrl);
 		redirectToSSO();
 		return;
 	}
+	if (params.code) {
+		wxLogin(params)
+			.then((response: any) => {
+				const result = response.data.data;
 
+				setToken(result.token);
+			})
+			.catch(error => {});
+	}
 	try {
-		const data: any = await getInfo(token);
+		const data: any = await getInfo(params.token);
 		// const data: any = await getInfos(token);
 		// console.log("data.code", data.code);
 

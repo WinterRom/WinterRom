@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-04-15 17:25:18
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-15 15:19:57
+ * @LastEditTime: 2026-01-16 16:49:15
  * @FilePath: \foundesrcPro\itc_ai_self_ui\src\lib\utils\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -100,6 +100,7 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 	};
 
 	let lastId: any = null;
+	console.log("backendMessages", backendMessages);
 
 	backendMessages.forEach((item, index) => {
 		const userMsgId = `${item.id}-user`;
@@ -112,7 +113,8 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 			childrenIds: [assistantMsgId],
 			role: "user",
 			content: item.query,
-			done: true
+			done: true,
+			files: item.message_files
 		};
 
 		// 如果有上一个节点，将当前用户节点设为其子节点
