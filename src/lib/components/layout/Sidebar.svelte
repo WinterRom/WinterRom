@@ -16,13 +16,14 @@
 	import { onMount, tick } from "svelte";
 	import { get } from "svelte/store";
 	import { userInfor, userName } from "$lib/stores";
+	import { swipe } from "$lib/utils/swipe";
 	export let show = false;
 	export let conversationId = "";
 	let navElement;
 	let importFileInputElement: any;
 	let importFiles: any;
 
-	let title: string = "新AI智能体";
+	let title: string = "新小C";
 	let search = "";
 
 	let chatDeleteId: string = "";
@@ -36,8 +37,6 @@
 	let selectStatus: any[] = [];
 	onMount(async () => {
 		// handleResize
-		console.log("conversationId", conversationId);
-
 		if (window.innerWidth > 1280) {
 			show = true;
 		}
@@ -47,6 +46,17 @@
 	$: if ($userName) {
 		userNames = get(userName);
 	}
+	// [新增] 用于记录当前被滑动的条目 ID
+	let swipedItemId: string = "";
+
+	// [新增] 处理滑动手势
+	function handleSwipeLeft(id: string) {
+		swipedItemId = id; // 标记该条目为左滑状态
+	}
+
+	function handleSwipeRight() {
+		swipedItemId = ""; // 复位，关闭所有侧滑
+	}
 	// function handleResize() {
 	// 	windowWidth = window.innerWidth;
 	// 	show = windowWidth > 1040;
@@ -55,7 +65,6 @@
 		const { data } = await getChatList();
 		chatList = data;
 		// let data = JSON.parse(conversationsList);
-		// console.log("data-getChatConversationsList", data);
 	};
 	const loadChat = async (id: any, i: number) => {
 		// 设置当前的 chatId store，以便页面能够感知到切换
@@ -170,7 +179,7 @@
 					<div class="self-center mr-3.5">
 						<img src="/favicon.png" alt="favicon" class=" w-5 rounded-full" />
 					</div>
-					<div class=" self-center font-medium text-sm">AI智能体+</div>
+					<div class=" self-center font-medium text-sm">小C+</div>
 				</div>
 			</button>
 		</div>
@@ -419,6 +428,9 @@
 					chat.id === conversationId
 						? 'set-select-bgc'
 						: ''}"
+					use:swipe
+					on:swiperight={() => handleSwipeRight()}
+					on:swipeleft={() => handleSwipeLeft(chat.id)}
 				>
 					<button
 						class=" w-full flex justify-between rounded-md px-3 py-2 hover:bg-gray-1000 hover:900bg-gray- {chat.id
@@ -426,18 +438,14 @@
 							: 'bg-gray-1050'} transition whitespace-nowrap text-ellipsis"
 						on:click={() => {
 							selectStatus.length = chatList.length;
-							console.log("1", selectStatus);
-
 							// goto(`/c/${chat.id}`);
 							if (chat.id !== chatTitleEditId) {
 								chatTitleEditId = "";
 								chatTitle = "";
 								selectStatus = [];
-								console.log("2", selectStatus);
 							}
 							if (chat.id && !chatTitleEditId) {
 								selectStatus[i] = true;
-								console.log("3", selectStatus, selectStatus[i]);
 								loadChat(chat.id, i);
 							}
 						}}
@@ -477,7 +485,7 @@
 						</div>
 					</button>
 
-					{#if chat.id}
+					{#if chat.id === $chatId}
 						<div class=" absolute right-[22px] top-[10px]">
 							{#if chatTitleEditId === chat.id}
 								<div class="flex self-center space-x-1.5">
@@ -567,6 +575,7 @@
 										on:click={() => {
 											chatTitle = chat.name;
 											chatTitleEditId = chat.id;
+											swipedItemId = "";
 											// editChatTitle(chat.id, 'a');
 										}}
 									>
@@ -589,6 +598,7 @@
 										class=" self-center hover:text-customRed transition"
 										on:click={() => {
 											chatDeleteId = chat.id;
+											swipedItemId = "";
 										}}
 									>
 										<svg

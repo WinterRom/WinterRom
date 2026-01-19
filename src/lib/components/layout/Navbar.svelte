@@ -9,7 +9,7 @@
 	import { getToken, setToken, removeToken } from "$lib/utils/cookie";
 	import tippy from "tippy.js";
 	const redirectUrl: any = import.meta.env.VITE_API_REDIRECT_URL;
-	export let title: string = "新AI智能体";
+	export let title: string = "新小C";
 	let showLongOutbtn: boolean = false;
 	let userNames: string = "";
 	let username: HTMLElement;
@@ -70,7 +70,7 @@
 					<div
 						class=" flex-1 ml-2 self-center font-medium text-ellipsis whitespace-nowrap overflow-hidden"
 					>
-						{title != "" ? title : "新AI智能体"}
+						{title != "" ? title : "新小C"}
 					</div>
 				</button>
 			</div>

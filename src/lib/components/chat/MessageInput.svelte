@@ -20,10 +20,18 @@
 	// 监听文件选择，一旦选择立即上传
 	$: if (importFiles && importFiles.length > 0) {
 		const file = importFiles[0];
+		if (importFiles.length > 1) {
+			importFiles.splice(importFiles.length - 1, 1);
+			toast.error("只能上传一张图片，请先删除已有图片");
+		}
 		handleUpload(file);
 		importFileInputElement.value = "";
 	}
 	const handleUpload = async (file: File) => {
+		if (selectedFiles.length > 1) {
+			toast.error("只能上传一张图片，请先删除已有图片");
+			return;
+		}
 		isUploading = true;
 		const loadingId = toast.loading("正在上传...");
 		//  1. 生成本地预览链接，实现“秒开”效果
@@ -210,7 +218,7 @@
 						<textarea
 							id="chat-textarea"
 							class=" dark:bg-gray-800 dark:text-gray-100 outline-none w-full py-3 px-2 pl-4 rounded-xl resize-none"
-							placeholder="AI智能体+，您的智能助手！快开始和我的聊天吧！"
+							placeholder="小C+，您的智能助手！快开始和我的聊天吧！"
 							bind:value={prompt}
 							on:keypress={e => keyBoardDown(e)}
 							rows="3"
@@ -222,8 +230,14 @@
 								<button
 									type="button"
 									class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1 mr-0.5 w-7 h-7 self-center"
-									on:click={() => importFileInputElement.click()}
-									title="上传文件"
+									on:click={() => {
+										if (selectedFiles.length >= 1) {
+											toast("只能上传一张图片，请先删除已有图片");
+											return;
+										}
+										importFileInputElement.click();
+									}}
+									title="上传图片"
 									disabled={isUploading}
 								>
 									<svg
