@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-03-04 10:22:31
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-15 14:42:49
+ * @LastEditTime: 2026-01-20 15:27:07
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\api\chat.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -51,6 +51,13 @@ export const deleteConversation = (data: any) =>
 export const getConversationMessageList = (data: any) =>
 	request({
 		url: "/difyApi/getMessages",
+		method: "post",
+		data
+	});
+// 点赞点踩
+export const feedbackMessage = (data: any) =>
+	request({
+		url: "/difyApi/feedbacks",
 		method: "post",
 		data
 	});

@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-04-15 17:25:18
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-19 17:07:20
+ * @LastEditTime: 2026-01-20 16:20:23
  * @FilePath: \foundesrcPro\itc_ai_self_ui\src\lib\utils\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -98,14 +98,10 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 		messages: {},
 		currentId: null
 	};
-
 	let lastId: any = null;
-	console.log("backendMessages", backendMessages);
-
 	backendMessages.forEach((item, index) => {
 		const userMsgId = `${item.id}-user`;
 		const assistantMsgId = `${item.id}-assistant`;
-
 		// 1. 创建用户消息节点
 		history.messages[userMsgId] = {
 			id: userMsgId,
@@ -124,6 +120,10 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 
 		// 2. 创建助手消息节点
 		history.messages[assistantMsgId] = {
+			messageId: item.id,
+			feedback: item.feedback || null,
+			conversationId: item.conversation_id,
+			query: item.query,
 			id: assistantMsgId,
 			parentId: userMsgId,
 			childrenIds: [],
@@ -131,6 +131,7 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 			content: item.answer || "手动停止",
 			done: true
 		};
+		console.log("item.feedback ", item.feedback);
 
 		lastId = assistantMsgId;
 	});

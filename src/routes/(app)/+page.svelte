@@ -88,7 +88,6 @@
 
 	const initNewChat = async () => {
 		autoScroll = true;
-
 		title = "";
 		messages = [];
 		history = {
@@ -96,11 +95,7 @@
 			currentId: null
 		};
 
-		let _settings = JSON.parse(localStorage.getItem("settings") ?? "{}");
-
-		settings.set({
-			..._settings
-		});
+		conversationId = "";
 	};
 
 	const copyToClipboard = (text: string, usercopy?: string) => {
@@ -403,17 +398,17 @@
 	// };
 
 	// 用户发送问答
+	// 用户发送问答 - 深度优化版
 	const sendPromptOllama = async (
-		// model: any, // 你的代码中注释掉了 model
 		userPrompt: any,
 		parentId: any,
 		_chatId: any,
 		fileId?: string
 	) => {
 		isStreaming = true;
-		// 【关键】开始前重置 taskId
 		stopChatTaskId = "";
 
+		// 1. 初始化新消息对象
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
 			parentId: parentId,
@@ -421,10 +416,10 @@
 			childrenIds: [],
 			role: "assistant",
 			content: "",
-			// model: model,
 			isShow: false
 		};
 
+		// 2. 更新历史记录（数据源）
 		history.messages[responseMessageId] = responseMessage;
 		history.currentId = responseMessageId;
 		if (parentId !== null) {
@@ -434,237 +429,225 @@
 			];
 		}
 
+		// 3. 触发一次 Svelte 更新，让新消息出现在 UI 列表中
+		// 这一步非常重要，是为了确保 messages 数组里生成了新的 UI 对象
+		history = { ...history };
 		await tick();
 		window.scrollTo({ top: document.body.scrollHeight });
 
-		// ==================== 修改开始 ====================
-		// 使用原生 fetch 替代 getChat 以支持流式读取
+		// 4. 获取 UI 数组中对应的消息对象引用
+		// 因为 messages 可能是通过 history 浅拷贝生成的，我们需要直接修改这个 UI 对象才能实时显示
+		// 只有这样才能避免在流式传输中反复触发 $: block 重建数组导致卡死
+		let uiMessage = null;
+		if (messages.length > 0) {
+			uiMessage = messages[messages.length - 1];
+			// 双重校验 ID，防止取错
+			if (uiMessage.id !== responseMessageId) {
+				uiMessage = messages.find((m: any) => m.id === responseMessageId);
+			}
+		}
 
-		// 1. 构建查询参数
+		// 5. 准备请求参数
 		const params = new URLSearchParams({
 			message: userPrompt,
-			conversationId: conversationId,
+			conversationId: conversationId || "",
 			fileId: fileId || ""
 		});
-		console.log("params", params);
-		// let reader;
-		// let decoder;
 
 		try {
+			// 发起请求
 			const res: any = await fetch(
-				`api/difyApi/chatMessages?${params.toString()}`,
+				`/api/difyApi/chatMessages?${params.toString()}`,
 				{
 					method: "GET",
 					headers: {
 						"Content-Type": "application/json",
 						Accept: "text/event-stream",
-						"X-Token": getToken() || "" // 携带 Token
-						// "Authorization": "Bearer ...", // 如果需要 Bearer Token 请在此添加
+						"X-Token": getToken() || ""
 					}
 				}
 			);
-			console.log("res", res);
+
 			if (!res.ok) throw new Error(res.statusText);
 
-			// 2. 获取流读取器
-			// reader = res.body.getReader();
-			const reader = res.body
-				.pipeThrough(new TextDecoderStream())
-				.pipeThrough(splitStream("\n"))
-				.getReader();
-			// decoder = new TextDecoder();
-			console.log("reader", reader);
-			// console.log("decoder", decoder);
-
-			let buffer = ""; // 用于缓存不完整的行
-
+			// 6. 建立流读取器（不使用 splitStream，改用原生 buffer 处理以提高稳定性）
+			const reader = res.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = "";
+			let lastRenderTime = 0; // 用于节流控制
+			let tagBuffer = "";
 			while (true) {
-				// 读取数据流
 				const { done, value } = await reader.read();
-				if (stopResponseFlag) {
-					stopChatTaskId = "";
-					responseMessage.content = "手动停止";
+
+				// 检查是否停止
+				if (done || stopResponseFlag) {
+					if (stopResponseFlag) {
+						if (uiMessage) uiMessage.content += " [已停止]";
+						responseMessage.content += " [已停止]";
+					}
 					responseMessage.done = true;
-					messages = messages;
-					break;
-				}
-				// 检查是否被中断（点击了停止按钮或切换了会话）
-				if (done || stopResponseFlag || _chatId !== $chatId) {
-					// if (reader) reader.cancel();
-					stopChatTaskId = "";
-					responseMessage.done = true;
-					messages = messages;
+					if (uiMessage) uiMessage.done = true;
+					messages = messages; // 最后强制刷新一次
 					break;
 				}
 
-				console.log("done", done);
-				console.log("value", value);
-				try {
-					let lines = value.split("\n");
-					for (const line of lines) {
-						if (line) {
-							if (line.startsWith("event:")) {
-								continue;
-							}
-							// console.log("line", line);
-							const jsonString = line.replace("data: ", ""); // 去除前缀
-							// 关键过滤逻辑：跳过 event: 开头的行
+				// 解码数据
+				const chunk = decoder.decode(value, { stream: true });
+				buffer += chunk;
 
-							// console.log("jsonString", JSON.parse(jsonString));
-							// console.log("jsonString", jsonString);
-							if (!jsonString) continue; // 跳过空行
-							let data = JSON.parse(jsonString);
-							console.log("data", data);
-							console.log("data.event", data.event);
-							if (data.event === "workflow_started") {
-								console.log("data-id", data);
+				const lines = buffer.split("\n");
+				// 保留最后一个可能不完整的片段在 buffer 中
+				buffer = lines.pop() || "";
 
-								stopChatTaskId = data.task_id;
-								console.log("stopChatTaskId-id-page", stopChatTaskId);
-								conversationId = data.conversation_id;
-								messages.at(-1).done = false;
-							}
-							if (data.event === "error") {
-								// if (!responseMessage.content) {
-								console.log(111);
-								responseMessage.error = true;
-								responseMessage.done = true;
-								responseMessage.content =
-									"您好，没有您想要的答案呢！可以换个问题问一问呢！";
-								messages = messages;
-								// }
-							}
-							if (responseMessage.content == "" && !data.answer) {
-								continue;
-							} else {
-								let resultString: any;
+				for (const line of lines) {
+					if (!line.trim() || line.startsWith("event:")) continue;
 
-								if (data.event === "message") {
-									responseMessage.content += data.answer;
-									// resultString += data.answer;
-									messages = messages;
-									if (!responseMessage.content) {
-										responseMessage.error = true;
-										responseMessage.done = true;
-										responseMessage.content =
-											"您好，没有您想要的答案呢！可以换个问题问一问呢！";
-										messages = messages;
+					const jsonString = line.replace(/^data: /, "");
+					if (!jsonString) continue;
+
+					try {
+						const data = JSON.parse(jsonString);
+
+						// 处理 conversationId
+						if (data.event === "workflow_started") {
+							stopChatTaskId = data.task_id;
+							conversationId = data.conversation_id;
+						}
+
+						// 处理消息内容
+						if (data.event === "message") {
+							const content = data.answer;
+
+							const PRINT_SPEED = 30;
+
+							// 自动滚动控制
+							let autoScroll = true;
+							let fullTextChunk = tagBuffer + data.answer;
+							tagBuffer = ""; // 清空缓冲
+							let i = 0;
+							while (i < fullTextChunk.length) {
+								// 检查是否遇到标签起始
+								if (fullTextChunk[i] === "<") {
+									const endTagIndex = fullTextChunk.indexOf(">", i);
+									if (endTagIndex !== -1) {
+										// 1. 找到了完整的标签，一次性追加到 content，不触发延迟
+										// 这样用户瞬间看到的是样式变化，而不是标签字符
+										responseMessage.content += fullTextChunk.slice(
+											i,
+											endTagIndex + 1
+										);
+										i = endTagIndex + 1;
+										continue;
+									} else {
+										// 2. 没找到闭合的 ">"，说明标签被截断了（例如只收到了 "<str"）
+										// 将剩下的所有字符存入 buffer，等待下一个数据包拼接
+										tagBuffer = fullTextChunk.slice(i);
+										break; // 结束本次循环，等待下一次数据
 									}
-									// const PRINT_SPEED = 50;
+								}
+								// 普通字符，逐个追加并延迟
+								responseMessage.content += fullTextChunk[i];
+								i++;
+								// 强制更新 Svelte 视图
+								messages = messages;
+								await tick();
+								if (autoScroll) {
+									window.scrollTo({
+										top: document.body.scrollHeight,
+										behavior: "smooth" // 或 "auto" 以获得更好的性能
+									});
+								}
+								// 只有普通文字才延迟，HTML标签不延迟
+								await new Promise(resolve => setTimeout(resolve, PRINT_SPEED));
+							}
+							if (uiMessage) {
+								uiMessage.content += content;
+							}
+							// C. 节流刷新：每 100ms 触发一次 Svelte DOM 更新
+							// 这解决了“卡死”问题，避免了高频渲染
+							const now = Date.now();
+							if (now - lastRenderTime > 100) {
+								messages = messages;
+								lastRenderTime = now;
 
-									// 自动滚动控制
-									// let autoScroll = true;
-									// const chars = data.answer.split("");
-									// for (const char of chars) {
-									// 	responseMessage.content += char;
-									// 	// console.log("char", char);
-									// 	messages = messages;
-									// 	// ✅ 关键：每次更新都重新渲染完整 Markdown
-									// 	await tick(); // 等待 DOM 更新
-
-									// 	// 自动滚动到底部
-									// 	if (autoScroll) {
-									// 		window.scrollTo({
-									// 			top: document.body.scrollHeight,
-									// 			behavior: "smooth"
-									// 		});
-									// 	}
-
-									// 	// 控制打印速度
-									// 	await new Promise(resolve =>
-									// 		setTimeout(resolve, PRINT_SPEED)
-									// 	);
-									// 	//
-									// }
-
-									window.requestAnimationFrame(() => {
+								// 滚动控制
+								window.requestAnimationFrame(() => {
+									if (autoScroll) {
 										window.scrollTo({
 											top: document.body.scrollHeight,
 											behavior: "smooth"
 										});
-									});
-									// if (!isRendering) {
-									// 	isRendering = true;
-									// 	renderBuffer();
-									// }
-								}
-								if ($settings.responseAutoCopy) {
-									copyToClipboard(responseMessage.content);
-								}
+									}
+								});
 							}
 						}
+
+						if (data.event === "error") {
+							const errorMsg = " 发生错误";
+							responseMessage.content += errorMsg;
+							if (uiMessage) uiMessage.content += errorMsg;
+							responseMessage.error = true;
+						}
+					} catch (e) {
+						responseMessage.done = true;
+						responseMessage.content = e.message || "数据处理失败";
+						if (uiMessage) {
+							uiMessage.done = true;
+							uiMessage.content = responseMessage.content;
+						}
+						messages = messages;
+						toast.error(e.message || "数据处理失败");
 					}
-				} catch {}
+				}
 			}
-		} catch (error) {
-			console.error("Fetch error:", error);
+		} catch (error: any) {
 			responseMessage.done = true;
 			responseMessage.content = error.message || "请求失败";
+			if (uiMessage) {
+				uiMessage.done = true;
+				uiMessage.content = responseMessage.content;
+			}
 			messages = messages;
 			toast.error(error.message || "网络请求失败");
 		} finally {
+			// 【关键】重置状态，防止按钮卡死
+			isStreaming = false;
+			stopChatTaskId = "";
 			stopResponseFlag = false;
+
+			// 确保最后的内容被渲染
+			messages = messages;
 			await tick();
-			// 保存会话记录
-			await $db.updateChatById(_chatId, {
-				title: title === "" ? "新会话" : title,
-				// ... 其他保存逻辑保持不变
-				messages: messages,
-				history: history
-			});
-			if (messages.length == 2 && messages.at(1).content !== "") {
-				window.history.replaceState(history.state, "", `/c/${_chatId}`);
-			}
+			window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
 		}
 	};
 	const submitPrompt = async (userPrompt: any, files: any = []) => {
-		if (!userPrompt) {
-			return;
-		}
-		const _chatId: any = JSON.parse(JSON.stringify($chatId));
-		console.log("files", files);
+		if (!userPrompt) return;
 
-		// await generateChatTitle(_chatId, userPrompt);
-		// if (selectedModels.includes("")) {
-		// 	toast.error("Model not selected");
-		// } else if (messages.length != 0 && messages.at(-1).done != true) {
-		// } else {
 		const chatElement: any = document.getElementById("chat-textarea");
-		chatElement.style.height = "";
-		let userMessageId = conversationId || uuidv4();
+		if (chatElement) chatElement.style.height = "";
+
+		// 1. 生成用户消息并保存到 history
+		let userMessageId = uuidv4();
 		let userMessage: any = {
 			id: userMessageId,
 			parentId: messages.length !== 0 ? messages.at(-1).id : null,
 			childrenIds: [],
 			role: "user",
 			content: userPrompt,
-			// 将文件数据存入消息对象，Messages.svelte 会自动读取并显示
 			files: files
 		};
+
 		if (messages.length !== 0) {
 			history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
 		}
 		history.messages[userMessageId] = userMessage;
 		history.currentId = userMessageId;
+
+		// 2. 刷新界面
 		await tick();
-		if (messages.length == 1) {
-			await $db.createNewChat({
-				id: _chatId,
-				title: "新会话",
-				// models: selectedModels,
-				options: {
-					seed: $settings.seed ?? undefined,
-					temperature: $settings.temperature ?? undefined,
-					repeat_penalty: $settings.repeat_penalty ?? undefined,
-					top_k: $settings.top_k ?? undefined,
-					top_p: $settings.top_p ?? undefined,
-					num_ctx: $settings.num_ctx ?? undefined,
-					...($settings.options ?? {})
-				},
-				messages: messages,
-				history: history
-			});
-		}
+
+		// 3. 清空输入框并滚动
 		prompt = "";
 		setTimeout(() => {
 			window.scrollTo({
@@ -672,8 +655,11 @@
 				behavior: "smooth"
 			});
 		}, 50);
+
+		// 4. 发送请求（conversationId 会在 sendPromptOllama 内部自动处理）
+		// 注意：_chatId 仅作为占位符传递，实际逻辑不再依赖它
+		const _chatId = $chatId || "temp-id";
 		await sendPrompt(userPrompt, userMessageId, _chatId, files[0]?.id);
-		// }
 	};
 	const stopResponse = async () => {
 		const response: any = await stopChat({ taskId: stopChatTaskId });
@@ -687,9 +673,6 @@
 
 	const regenerateResponse = async () => {
 		const _chatId = JSON.parse(JSON.stringify($chatId));
-		console.log(111);
-		console.log("messages.length ", messages.length);
-		console.log("messages.at(-1).done ", messages.at(-1).done);
 		if (messages.length != 0 && messages.at(-1).done == true) {
 			messages.splice(messages.length - 1, 1);
 			messages = messages;
@@ -702,37 +685,6 @@
 		await $db.updateChatById(_chatId, { title: _title });
 		if (_chatId === $chatId) {
 			title = _title;
-		}
-	};
-	const generateChatTitle = async (_chatId: any, userPrompt: any) => {
-		if ($settings.titleAutoGenerate ?? true) {
-			// const res = await fetch(`${$settings?.API_BASE_URL ?? OLLAMA_API_BASE_URL}/generate`, {
-			// 	method: "POST",
-			// 	headers: {
-			// 		"Content-Type": "text/event-stream"
-			// 	},
-			// 	body: JSON.stringify({
-			// 		model: selectedModels[0],
-			// 		prompt: `Generate a brief 3-5 word title for this question, excluding the term 'title.' Then, please reply with only the title: ${userPrompt}`,
-			// 		stream: false
-			// 	})
-			// })
-			// 	.then(async (res) => {
-			// 		if (!res.ok) throw await res.json();
-			// 		return res.json();
-			// 	})
-			// 	.catch((error) => {
-			// 		if ("detail" in error) {
-			// 			toast.error(error.detail);
-			// 		}
-			// 		return null;
-			// 	});
-			await setChatTitle(_chatId, userPrompt === "" ? "新会话" : userPrompt);
-			// 	if (userPrompt) {
-			// 		await setChatTitle(_chatId, userPrompt === "" ? "新会话" : userPrompt);
-			// 	}
-			// } else {
-			// 	await setChatTitle(_chatId, `${userPrompt}`);
 		}
 	};
 </script>
@@ -922,7 +874,7 @@
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
 	</div> -->
 
-			<div class=" mt-10 w-full flex flex-col">
+			<div class="set-new-margin mt-10 w-full flex flex-col">
 				<Messages
 					bind:history
 					bind:messages

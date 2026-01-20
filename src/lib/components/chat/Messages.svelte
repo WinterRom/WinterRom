@@ -14,7 +14,7 @@
 	import { userInfor, userName } from "$lib/stores";
 	import toast from "svelte-french-toast";
 	import { parse } from "svelte/compiler";
-
+	import { feedbackMessage } from "$lib/api/chat";
 	export let sendPrompt: Function;
 	export let regenerateResponse: Function;
 	export let isMobile: boolean;
@@ -28,6 +28,21 @@
 	let userNames: string = "";
 	let showNoAnser: boolean = true;
 	let displayedContent: any;
+	let feedbackForm: any = {
+		//会话ID
+		conversationId: "",
+		//消息ID
+		messageId: "",
+		//点赞 like, 点踩 dislike, 撤销点赞 null
+		rating: "",
+		//反馈内容
+		content: "",
+		//回答内容
+		answer: "",
+		//问题
+		title: ""
+	};
+	let feedbackColor: any = [];
 	$: if ($userName) {
 		userNames = get(userName);
 	}
@@ -230,6 +245,22 @@
 		);
 	};
 
+	const likeMessageHandler = async (message: any, feedback: any) => {
+		const form: any = {
+			conversationId: message.conversationId,
+			messageId: message.messageId,
+			answer: message.content,
+			title: message.query,
+			rating: feedback
+		};
+		const response: any = await feedbackMessage(form);
+		console.log("response", response);
+
+		console.log("message", message);
+		if (response.code === "000000") {
+			toast.success("反馈成功");
+		}
+	};
 	const editMessageHandler = async (messageId: any) => {
 		// let editMessage = history.messages[messageId];
 		history.messages[messageId].edit = true;
@@ -437,6 +468,12 @@
 		margin: 0 3%;
 		width: 94%;
 	}
+	.currentlikecolor {
+		color: #2784ff;
+	}
+	.currentdislikecolor {
+		color: #ff2424;
+	}
 </style>
 <!--没有会话消息默认新对话框-->
 {#if messages.length == 0}
@@ -616,7 +653,7 @@
 												<button
 													class="invisible group-hover:visible p-1 rounded dark:hover:bg-gray-800 transition"
 													on:click={() => {
-														editMessageHandler(message.id);
+														editMessageHandler(message);
 													}}
 													id="useredit-{message.id}"
 												>
@@ -912,31 +949,102 @@
 															</div>
 														{/if}
 
-														<button
+														<!-- <button
 															class="{messageIdx + 1 === messages.length
 																? 'visible'
 																: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
 															on:click={() => {
-																editMessageHandler(message.id);
+																editMessageHandler(message);
 															}}
 															id="edit-{message.id}"
 														>
 															<svg
-																xmlns="http://www.w3.org/2000/svg"
-																fill="none"
 																viewBox="0 0 24 24"
-																stroke-width="1.5"
-																stroke="currentColor"
-																class="w-4 h-4"
+																xmlns="http://www.w3.org/2000/svg"
+																width="24"
+																height="24"
+																fill="currentColor"
+																class="remixicon h-4 w-4"
+																><path
+																	d="M14.5998 8.00033H21C22.1046 8.00033 23 8.89576 23 10.0003V12.1047C23 12.3659 22.9488 12.6246 22.8494 12.8662L19.755 20.3811C19.6007 20.7558 19.2355 21.0003 18.8303 21.0003H2C1.44772 21.0003 1 20.5526 1 20.0003V10.0003C1 9.44804 1.44772 9.00033 2 9.00033H5.48184C5.80677 9.00033 6.11143 8.84246 6.29881 8.57701L11.7522 0.851355C11.8947 0.649486 12.1633 0.581978 12.3843 0.692483L14.1984 1.59951C15.25 2.12534 15.7931 3.31292 15.5031 4.45235L14.5998 8.00033ZM7 10.5878V19.0003H18.1606L21 12.1047V10.0003H14.5998C13.2951 10.0003 12.3398 8.77128 12.6616 7.50691L13.5649 3.95894C13.6229 3.73105 13.5143 3.49353 13.3039 3.38837L12.6428 3.0578L7.93275 9.73038C7.68285 10.0844 7.36341 10.3746 7 10.5878ZM5 11.0003H3V19.0003H5V11.0003Z"
+																/></svg
 															>
-																<path
-																	stroke-linecap="round"
-																	stroke-linejoin="round"
-																	d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"
-																/>
-															</svg>
-														</button>
-
+														</button> -->
+														{#if message?.feedback?.rating === null}
+															<button
+																class="{messageIdx + 1 === messages.length
+																	? 'visible'
+																	: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
+																on:click={() => {
+																	feedbackColor[messageIdx] = "like";
+																	console.log(
+																		'feedbackColor[messageIdx] != "like".',
+																		feedbackColor[messageIdx] != "like"
+																	);
+																	console.log(
+																		"!message?.feedback?.rating ",
+																		!message?.feedback?.rating
+																	);
+																	likeMessageHandler(
+																		message,
+																		message?.feedback?.rating === "like"
+																			? null
+																			: feedbackColor[messageIdx]
+																	);
+																}}
+																id="edit-{message.id}"
+															>
+																<svg
+																	viewBox="0 0 24 24"
+																	xmlns="http://www.w3.org/2000/svg"
+																	width="24"
+																	height="24"
+																	fill="currentColor"
+																	class="remixicon h-4 w-4 {feedbackColor[
+																		messageIdx
+																	] === 'like' ||
+																	message?.feedback?.rating === 'like'
+																		? 'currentlikecolor'
+																		: ''}"
+																	><path
+																		d="M14.5998 8.00033H21C22.1046 8.00033 23 8.89576 23 10.0003V12.1047C23 12.3659 22.9488 12.6246 22.8494 12.8662L19.755 20.3811C19.6007 20.7558 19.2355 21.0003 18.8303 21.0003H2C1.44772 21.0003 1 20.5526 1 20.0003V10.0003C1 9.44804 1.44772 9.00033 2 9.00033H5.48184C5.80677 9.00033 6.11143 8.84246 6.29881 8.57701L11.7522 0.851355C11.8947 0.649486 12.1633 0.581978 12.3843 0.692483L14.1984 1.59951C15.25 2.12534 15.7931 3.31292 15.5031 4.45235L14.5998 8.00033ZM7 10.5878V19.0003H18.1606L21 12.1047V10.0003H14.5998C13.2951 10.0003 12.3398 8.77128 12.6616 7.50691L13.5649 3.95894C13.6229 3.73105 13.5143 3.49353 13.3039 3.38837L12.6428 3.0578L7.93275 9.73038C7.68285 10.0844 7.36341 10.3746 7 10.5878ZM5 11.0003H3V19.0003H5V11.0003Z"
+																	/></svg
+																>
+															</button>
+														{/if}
+														{#if message?.feedback?.rating === null}
+															<button
+																class="{messageIdx + 1 === messages.length
+																	? 'visible'
+																	: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
+																on:click={() => {
+																	feedbackColor[messageIdx] = "dislike";
+																	likeMessageHandler(
+																		message,
+																		message?.feedback?.rating === "dislike"
+																			? null
+																			: feedbackColor[messageIdx]
+																	);
+																}}
+																id="edit-{message.id}"
+															>
+																<svg
+																	viewBox="0 0 24 24"
+																	xmlns="http://www.w3.org/2000/svg"
+																	width="24"
+																	height="24"
+																	fill="currentColor"
+																	class="remixicon h-4 w-4 {feedbackColor[
+																		messageIdx
+																	] === 'dislike' ||
+																	message?.feedback?.rating === 'dislike'
+																		? 'currentdislikecolor'
+																		: ''}"
+																	><path
+																		d="M9.40017 16H3C1.89543 16 1 15.1046 1 14V11.8957C1 11.6344 1.05118 11.3757 1.15064 11.1342L4.24501 3.61925C4.3993 3.24455 4.76447 3 5.16969 3H22C22.5523 3 23 3.44772 23 4V14C23 14.5523 22.5523 15 22 15H18.5182C18.1932 15 17.8886 15.1579 17.7012 15.4233L12.2478 23.149C12.1053 23.3508 11.8367 23.4184 11.6157 23.3078L9.80163 22.4008C8.74998 21.875 8.20687 20.6874 8.49694 19.548L9.40017 16ZM17 13.4125V5H5.83939L3 11.8957V14H9.40017C10.7049 14 11.6602 15.229 11.3384 16.4934L10.4351 20.0414C10.3771 20.2693 10.4857 20.5068 10.6961 20.612L11.3572 20.9425L16.0673 14.27C16.3172 13.9159 16.6366 13.6257 17 13.4125ZM19 13H21V5H19V13Z"
+																	/></svg
+																>
+															</button>{/if}
 														<button
 															class="{messageIdx + 1 === messages.length
 																? 'visible'

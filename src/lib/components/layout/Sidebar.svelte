@@ -188,8 +188,8 @@
 			<button
 				class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover:bg-gray-1000 transition set-bg-boder"
 				on:click={async () => {
+					getChatConversationsList();
 					goto("/");
-
 					await chatId.set(uuidv4());
 					// createNewChat();
 				}}
