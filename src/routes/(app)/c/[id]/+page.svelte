@@ -6,7 +6,8 @@
 	import {
 		getChat,
 		getChatSSE,
-		getConversationMessageList
+		getConversationMessageList,
+		stopChat
 	} from "$lib/api/chat";
 	import {
 		convertMessagesToHistory,
@@ -39,6 +40,8 @@
 	};
 	let conversationId: string = $page.params.id;
 	let windowWidth = 0;
+	let isStreaming = false;
+	let stopChatTaskId = "";
 	$: isMobile = windowWidth <= 1040;
 	$: if (copyContent) {
 		prompt = copyContent;
@@ -202,6 +205,9 @@
 		_chatId: any,
 		fileId?: string
 	) => {
+		isStreaming = true;
+		// 每次发送新消息前，重置任务ID，防止停止按钮使用旧的ID或提前激活
+		stopChatTaskId = "";
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
 			parentId: parentId,
@@ -225,7 +231,7 @@
 		const response: any = await getChat({
 			message: userPrompt,
 			conversationId: conversationId,
-			fileId: fileId
+			fileId: fileId || ""
 		});
 		while (true) {
 			// let { value, done } = await reader.read();
@@ -247,6 +253,14 @@
 						// debugger;
 						if (!jsonString) continue; // 跳过空行
 						let data = JSON.parse(jsonString);
+						if (data.event === "workflow_started") {
+							console.log("data-id", data);
+
+							stopChatTaskId = data.task_id;
+							console.log("stopChatTaskId-id-page", stopChatTaskId);
+							conversationId = data.conversation_id;
+							messages.at(-1).done = false;
+						}
 						if (data.event === "error") {
 							// if (!responseMessage.content) {
 							responseMessage.error = true;
@@ -286,6 +300,7 @@
 								// 2. 标签感知打字机逻辑
 								let i = 0;
 								while (i < fullHtml.length) {
+									if (stopResponseFlag) break;
 									if (fullHtml[i] === "<") {
 										// 如果遇到标签，找到标签结束位置，一次性追加整个标签
 										const endTagIndex = fullHtml.indexOf(">", i);
@@ -444,7 +459,13 @@
 	};
 	// };
 
-	const stopResponse = () => {
+	const stopResponse = async () => {
+		const response: any = await stopChat({ taskId: stopChatTaskId });
+		stopChatTaskId = "";
+		if ((response.code = "000000")) {
+			stopChatTaskId = "";
+		}
+		messages.at(-1).done = true;
 		stopResponseFlag = true;
 	};
 
@@ -552,62 +573,6 @@
 />
 
 {#if loaded}
-	<!-- <Navbar {title} shareEnabled={messages.length > 0} />
-	<div class="min-h-screen w-full flex justify-center bgcolor">
-		<div class=" py-2.5 flex flex-col justify-between w-full set-width">
-			<div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">
-				<ModelSelector bind:selectedModels disabled={messages.length > 0} />
-				{selectedModels}
-			</div>
-
-			<div class="set-new-margin h-full mt-10 mb-32 w-full flex flex-col">
-				<Messages
-					bind:history
-					bind:messages
-					bind:autoScroll
-					bind:copyContent
-					{sendPrompt}
-					{regenerateResponse}
-				/>
-			</div>
-		</div>
-
-		<MessageInput
-			bind:prompt
-			bind:autoScroll
-			{messages}
-			{submitPrompt}
-			{stopResponse}
-		/>
-	</div> -->
-	<!-- <div class="min-h-screen w-full flex justify-center bgcolor">
-		<div class={show ? "sidebar-left" : "hidden-width"}>
-			<Sidebar bind:show />
-		</div>
-
-		<div class=" {show ? 'content-right' : 'show-width-all'}">
-			<div class="nav-bar fixed py-2.5 top-0"><Navbar {title} /></div>
-		
-
-			<div class="set-new-margin mt-10 mb-32 w-full flex flex-col">
-				<Messages
-					bind:history
-					bind:messages
-					bind:autoScroll
-					bind:copyContent
-					{sendPrompt}
-					{regenerateResponse}
-				/>
-			</div>
-			<MessageInput
-				bind:prompt
-				bind:autoScroll
-				{messages}
-				{submitPrompt}
-				{stopResponse}
-			/>
-		</div>
-	</div> -->
 	{#if isMobile}
 		<div class="w-full max-w-[{windowWidth}] pb-[env(safe-area-inset-bottom)]">
 			<div class=" flex h-full undefined flex-col">
@@ -721,6 +686,7 @@
 						{messages}
 						{submitPrompt}
 						{stopResponse}
+						{stopChatTaskId}
 					/>
 				</div>
 				<!-- <div class="w-full h-[54px] fixd bottom-0"> -->
@@ -770,6 +736,7 @@
 					{messages}
 					{submitPrompt}
 					{stopResponse}
+					{stopChatTaskId}
 				/>
 				<div
 					class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
@@ -777,31 +744,6 @@
 					<p>内容由AI生成，仅供参考</p>
 				</div>
 			</div>
-
-			<!-- <div class=" py-2.5 flex flex-col justify-between w-full set-width">
-	<div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">
-		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
-	</div>
-
-	<div class="set-new-margin h-full mt-10 mb-32 w-full flex flex-col">
-		<Messages
-			bind:history
-			bind:messages
-			bind:autoScroll
-			bind:copyContent
-			{sendPrompt}
-			{regenerateResponse}
-		/>
-	</div>
-</div>
-
-<MessageInput
-	bind:prompt
-	bind:autoScroll
-	{messages}
-	{submitPrompt}
-	{stopResponse}
-/> -->
 		</div>
 	{/if}
 {/if}

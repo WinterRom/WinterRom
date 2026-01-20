@@ -7,7 +7,7 @@
 	export let prompt = "";
 	export let messages: any = [];
 	export let isMobile: boolean;
-
+	export let stopChatTaskId: any = "";
 	let importFileInputElement: any;
 	let importFiles: any;
 	//存储已上传成功的文件信息（用于预览和发送）
@@ -226,7 +226,7 @@
 						/>
 
 						<div class="self-end mb-2 flex justify-end space-x-0.5 mr-2">
-							{#if messages.length == 0 || messages.at(-1).done == true}
+							{#if !stopChatTaskId || messages.length == 0}
 								<button
 									type="button"
 									class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1 mr-0.5 w-7 h-7 self-center"
@@ -309,6 +309,8 @@
 								<button
 									class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-lg p-1.5"
 									on:click={() => stopResponse()}
+									disabled={!stopChatTaskId}
+									title={!stopChatTaskId ? "正在建立连接" : "停止生成"}
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"

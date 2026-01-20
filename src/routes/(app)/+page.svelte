@@ -140,21 +140,280 @@
 	) => {
 		await Promise.all(
 			selectedModels.map(async model => {
-				await sendPromptOllama(model, userPrompt, parentId, _chatId, fileId);
+				await sendPromptOllama(userPrompt, parentId, _chatId, fileId);
 			})
 		);
 
 		// await chats.set(await $db.getChats());
 	};
 
+	// const sendPromptOllama = async (
+	// 	model: any,
+	// 	userPrompt: any,
+	// 	parentId: any,
+	// 	_chatId: any,
+	// 	fileId?: string
+	// ) => {
+	// 	isStreaming = true;
+	// 	// 每次发送新消息前，重置任务ID，防止停止按钮使用旧的ID或提前激活
+	// 	stopChatTaskId = "";
+	// 	let responseMessageId = uuidv4();
+	// 	let responseMessage: any = {
+	// 		parentId: parentId,
+	// 		id: responseMessageId,
+	// 		childrenIds: [],
+	// 		role: "assistant",
+	// 		content: "",
+	// 		model: model,
+	// 		isShow: false
+	// 	};
+
+	// 	history.messages[responseMessageId] = responseMessage;
+	// 	history.currentId = responseMessageId;
+	// 	if (parentId !== null) {
+	// 		history.messages[parentId].childrenIds = [
+	// 			...history.messages[parentId].childrenIds,
+	// 			responseMessageId
+	// 		];
+	// 	}
+
+	// 	await tick();
+	// 	window.scrollTo({ top: document.body.scrollHeight });
+	// 	const response: any = await getChat({
+	// 		message: userPrompt,
+	// 		conversationId: conversationId,
+	// 		fileId: fileId || ""
+	// 	});
+	// 	console.log("response", response);
+
+	// 	let tagBuffer = "";
+	// 	while (true) {
+	// 		// let { value, done } = await reader.read();
+	// 		if (stopResponseFlag || _chatId !== $chatId) {
+	// 			responseMessage.done = true;
+	// 			messages = messages;
+	// 			break;
+	// 		}
+	// 		try {
+	// 			let lines = response?.data?.split("\n");
+	// 			// debugger;
+	// 			for (const line of lines) {
+	// 				if (line) {
+	// 					if (line.startsWith("event:")) {
+	// 						continue;
+	// 					}
+	// 					const jsonString = line.replace("data: ", ""); // 去除前缀
+	// 					// 关键过滤逻辑：跳过 event: 开头的行
+	// 					// debugger;
+	// 					if (!jsonString) continue; // 跳过空行
+	// 					let data = JSON.parse(jsonString);
+	// 					if (data.event === "workflow_started") {
+	// 						console.log("data", data);
+
+	// 						stopChatTaskId = data.task_id;
+	// 						await tick();
+	// 						conversationId = data.conversation_id;
+	// 						messages.at(-1).done = false;
+	// 					}
+	// 					if (data.event === "error") {
+	// 						// if (!responseMessage.content) {
+	// 						// responseMessage.error = true;
+	// 						responseMessage.done = true;
+	// 						responseMessage.content =
+	// 							"您好，没有您想要的答案呢！可以换个问题问一问呢！";
+	// 						messages = messages;
+	// 						// }
+	// 					}
+	// 					if (responseMessage.content == "" && !data.answer) {
+	// 						continue;
+	// 					} else {
+	// 						let resultString: any;
+	// 						// switch (data.event) {
+	// 						// 	case "message":
+	// 						// 		// 处理消息事件
+	// 						// 		responseMessage.content += data.answer;
+	// 						// 		break;
+	// 						// 	case "node_finished":
+	// 						// 		// 处理节点完成事件
+	// 						// 		break;
+	// 						// 	case "workflow_finished":
+	// 						// 		// 处理工作流完成事件
+	// 						// 		// isStreaming = false;
+	// 						// 		isStreaming = false;
+	// 						// 		responseMessage.done = true;
+	// 						// 		break;
+	// 						// 	// ... 其他事件处理
+	// 						// }
+	// 						if (data.event === "message") {
+	// 							const PRINT_SPEED = 30; // 打字速度
+	// 							let autoScroll = true;
+	// 							// 【重要】将缓冲区的内容和新收到的内容拼接
+	// 							// 注意：如果您的 data.answer 是 Markdown，这里建议直接拼接文本即可，不要做 HTML 解析逻辑
+	// 							// 如果您确定 data.answer 是 HTML 或者您在后端已经转换过，则使用以下逻辑：
+	// 							let fullTextChunk = tagBuffer + data.answer;
+	// 							tagBuffer = ""; // 清空缓冲
+	// 							let i = 0;
+	// 							while (i < fullTextChunk.length) {
+	// 								if (stopResponseFlag) break;
+	// 								// 检查是否遇到标签起始
+	// 								if (fullTextChunk[i] === "<") {
+	// 									const endTagIndex = fullTextChunk.indexOf(">", i);
+	// 									if (endTagIndex !== -1) {
+	// 										// 1. 找到了完整的标签，一次性追加到 content，不触发延迟
+	// 										// 这样用户瞬间看到的是样式变化，而不是标签字符
+	// 										responseMessage.content += fullTextChunk.slice(
+	// 											i,
+	// 											endTagIndex + 1
+	// 										);
+	// 										i = endTagIndex + 1;
+	// 										continue;
+	// 									} else {
+	// 										// 2. 没找到闭合的 ">"，说明标签被截断了（例如只收到了 "<str"）
+	// 										// 将剩下的所有字符存入 buffer，等待下一个数据包拼接
+	// 										tagBuffer = fullTextChunk.slice(i);
+	// 										break; // 结束本次循环，等待下一次数据
+	// 									}
+	// 								}
+	// 								// 普通字符，逐个追加并延迟
+	// 								responseMessage.content += fullTextChunk[i];
+	// 								i++;
+	// 								// 强制更新 Svelte 视图
+	// 								messages = messages;
+	// 								await tick();
+	// 								if (autoScroll) {
+	// 									window.scrollTo({
+	// 										top: document.body.scrollHeight,
+	// 										behavior: "smooth" // 或 "auto" 以获得更好的性能
+	// 									});
+	// 								}
+	// 								// 只有普通文字才延迟，HTML标签不延迟
+	// 								await new Promise(resolve =>
+	// 									setTimeout(resolve, PRINT_SPEED)
+	// 								);
+	// 							}
+	// 							// // debugger;
+	// 							// const PRINT_SPEED = 50;
+	// 							// // 自动滚动控制
+	// 							// let autoScroll = true;
+	// 							// // 1. 先将 Markdown 解析为完整的 HTML
+	// 							// let fullHtml: any = data.answer;
+	// 							// // 2. 标签感知打字机逻辑
+	// 							// let i = 0;
+	// 							// while (i < fullHtml.length) {
+	// 							// 	if (fullHtml[i] === "<") {
+	// 							// 		// 如果遇到标签，找到标签结束位置，一次性追加整个标签
+	// 							// 		const endTagIndex = fullHtml.indexOf(">", i);
+	// 							// 		if (endTagIndex !== -1) {
+	// 							// 			responseMessage.content += fullHtml.slice(
+	// 							// 				i,
+	// 							// 				endTagIndex + 1
+	// 							// 			);
+	// 							// 			i = endTagIndex + 1;
+	// 							// 			// 标签追加不触发延迟，直接进入下一轮循环检查
+	// 							// 			continue;
+	// 							// 		}
+	// 							// 	}
+	// 							// 	// 如果是普通文字，逐字符追加并触发延迟
+	// 							// 	responseMessage.content += fullHtml[i];
+	// 							// 	i++;
+	// 							// 	messages = messages;
+	// 							// 	await tick();
+
+	// 							// 	if (autoScroll) {
+	// 							// 		window.scrollTo({
+	// 							// 			top: document.body.scrollHeight,
+	// 							// 			behavior: "smooth"
+	// 							// 		});
+	// 							// 	}
+
+	// 							// 	await new Promise(resolve =>
+	// 							// 		setTimeout(resolve, PRINT_SPEED)
+	// 							// 	);
+	// 							// }
+	// 							// if (!responseMessage.content) {
+	// 							// 	// responseMessage.error = true;
+	// 							// 	responseMessage.done = true;
+	// 							// 	responseMessage.content =
+	// 							// 		"哎呀，问题已超纲！我已经认真记在小本本上啦，请期待我的进步哦！";
+	// 							// 	messages = messages;
+	// 							// }
+	// 							window.requestAnimationFrame(() => {
+	// 								window.scrollTo({
+	// 									top: document.body.scrollHeight,
+	// 									behavior: "smooth"
+	// 								});
+	// 							});
+	// 							// if (!isRendering) {
+	// 							// 	isRendering = true;
+	// 							// 	renderBuffer();
+	// 							// }
+	// 						} else if (data.event === "workflow_finished") {
+	// 							stopResponseFlag = true;
+	// 							responseMessage.done = true;
+	// 							messages.at(-1).done = true;
+	// 							// break;
+	// 						}
+	// 						if ($settings.responseAutoCopy) {
+	// 							copyToClipboard(responseMessage.content);
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+	// 		} catch (error: any) {
+	// 			console.log("error", error);
+	// 			console.log("error-response", response);
+	// 			// responseMessage.error = true;
+	// 			responseMessage.done = true;
+	// 			responseMessage.content = response.message;
+	// 			messages = messages;
+	// 			// }
+	// 			if ("detail" in error) {
+	// 				toast.error(error.detail);
+	// 			}
+	// 			break;
+	// 		}
+	// 		if (autoScroll) {
+	// 			window.scrollTo({ top: document.body.scrollHeight });
+	// 		}
+	// 		await $db.updateChatById(_chatId, {
+	// 			title: title === "" ? "新会话" : title,
+	// 			models: selectedModels,
+	// 			options: {
+	// 				seed: $settings.seed ?? undefined,
+	// 				temperature: $settings.temperature ?? undefined,
+	// 				repeat_penalty: $settings.repeat_penalty ?? undefined,
+	// 				top_k: $settings.top_k ?? undefined,
+	// 				top_p: $settings.top_p ?? undefined,
+	// 				num_ctx: $settings.num_ctx ?? undefined,
+	// 				...($settings.options ?? {})
+	// 			},
+	// 			messages: messages,
+	// 			history: history
+	// 		});
+	// 	}
+	// 	stopResponseFlag = false;
+	// 	await tick();
+	// 	if (autoScroll) {
+	// 		window.scrollTo({ top: document.body.scrollHeight });
+	// 	}
+
+	// 	if (messages.length == 2 && messages.at(1).content !== "") {
+	// 		window.history.replaceState(history.state, "", `/c/${_chatId}`);
+	// 	}
+	// };
+
+	// 用户发送问答
 	const sendPromptOllama = async (
-		model: any,
+		// model: any, // 你的代码中注释掉了 model
 		userPrompt: any,
 		parentId: any,
 		_chatId: any,
 		fileId?: string
 	) => {
 		isStreaming = true;
+		// 【关键】开始前重置 taskId
+		stopChatTaskId = "";
+
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
 			parentId: parentId,
@@ -162,7 +421,7 @@
 			childrenIds: [],
 			role: "assistant",
 			content: "",
-			model: model,
+			// model: model,
 			isShow: false
 		};
 
@@ -177,228 +436,187 @@
 
 		await tick();
 		window.scrollTo({ top: document.body.scrollHeight });
-		const response: any = await getChat({
+
+		// ==================== 修改开始 ====================
+		// 使用原生 fetch 替代 getChat 以支持流式读取
+
+		// 1. 构建查询参数
+		const params = new URLSearchParams({
 			message: userPrompt,
 			conversationId: conversationId,
-			fileId: fileId
+			fileId: fileId || ""
 		});
-		console.log("response", response);
+		console.log("params", params);
+		// let reader;
+		// let decoder;
 
-		let tagBuffer = "";
-		while (true) {
-			// let { value, done } = await reader.read();
-			if (stopResponseFlag || _chatId !== $chatId) {
-				responseMessage.done = true;
-				messages = messages;
-				break;
-			}
-			try {
-				let lines = response?.data?.split("\n");
-				// debugger;
-				for (const line of lines) {
-					if (line) {
-						if (line.startsWith("event:")) {
-							continue;
-						}
-						const jsonString = line.replace("data: ", ""); // 去除前缀
-						// 关键过滤逻辑：跳过 event: 开头的行
-						// debugger;
-						if (!jsonString) continue; // 跳过空行
-						let data = JSON.parse(jsonString);
-						if (data.event === "workflow_started") {
+		try {
+			const res: any = await fetch(
+				`api/difyApi/chatMessages?${params.toString()}`,
+				{
+					method: "GET",
+					headers: {
+						"Content-Type": "application/json",
+						Accept: "text/event-stream",
+						"X-Token": getToken() || "" // 携带 Token
+						// "Authorization": "Bearer ...", // 如果需要 Bearer Token 请在此添加
+					}
+				}
+			);
+			console.log("res", res);
+			if (!res.ok) throw new Error(res.statusText);
+
+			// 2. 获取流读取器
+			// reader = res.body.getReader();
+			const reader = res.body
+				.pipeThrough(new TextDecoderStream())
+				.pipeThrough(splitStream("\n"))
+				.getReader();
+			// decoder = new TextDecoder();
+			console.log("reader", reader);
+			// console.log("decoder", decoder);
+
+			let buffer = ""; // 用于缓存不完整的行
+
+			while (true) {
+				// 读取数据流
+				const { done, value } = await reader.read();
+				if (stopResponseFlag) {
+					stopChatTaskId = "";
+					responseMessage.content = "手动停止";
+					responseMessage.done = true;
+					messages = messages;
+					break;
+				}
+				// 检查是否被中断（点击了停止按钮或切换了会话）
+				if (done || stopResponseFlag || _chatId !== $chatId) {
+					// if (reader) reader.cancel();
+					stopChatTaskId = "";
+					responseMessage.done = true;
+					messages = messages;
+					break;
+				}
+
+				console.log("done", done);
+				console.log("value", value);
+				try {
+					let lines = value.split("\n");
+					for (const line of lines) {
+						if (line) {
+							if (line.startsWith("event:")) {
+								continue;
+							}
+							// console.log("line", line);
+							const jsonString = line.replace("data: ", ""); // 去除前缀
+							// 关键过滤逻辑：跳过 event: 开头的行
+
+							// console.log("jsonString", JSON.parse(jsonString));
+							// console.log("jsonString", jsonString);
+							if (!jsonString) continue; // 跳过空行
+							let data = JSON.parse(jsonString);
 							console.log("data", data);
+							console.log("data.event", data.event);
+							if (data.event === "workflow_started") {
+								console.log("data-id", data);
 
-							stopChatTaskId = data.task_id;
-							conversationId = data.conversation_id;
-							messages.at(-1).done = false;
-						}
-						if (data.event === "error") {
-							// if (!responseMessage.content) {
-							// responseMessage.error = true;
-							responseMessage.done = true;
-							responseMessage.content =
-								"您好，没有您想要的答案呢！可以换个问题问一问呢！";
-							messages = messages;
-							// }
-						}
-						if (responseMessage.content == "" && !data.answer) {
-							continue;
-						} else {
-							let resultString: any;
-							// switch (data.event) {
-							// 	case "message":
-							// 		// 处理消息事件
-							// 		responseMessage.content += data.answer;
-							// 		break;
-							// 	case "node_finished":
-							// 		// 处理节点完成事件
-							// 		break;
-							// 	case "workflow_finished":
-							// 		// 处理工作流完成事件
-							// 		// isStreaming = false;
-							// 		isStreaming = false;
-							// 		responseMessage.done = true;
-							// 		break;
-							// 	// ... 其他事件处理
-							// }
-							if (data.event === "message") {
-								const PRINT_SPEED = 30; // 打字速度
-								let autoScroll = true;
-								// 【重要】将缓冲区的内容和新收到的内容拼接
-								// 注意：如果您的 data.answer 是 Markdown，这里建议直接拼接文本即可，不要做 HTML 解析逻辑
-								// 如果您确定 data.answer 是 HTML 或者您在后端已经转换过，则使用以下逻辑：
-								let fullTextChunk = tagBuffer + data.answer;
-								tagBuffer = ""; // 清空缓冲
-								let i = 0;
-								while (i < fullTextChunk.length) {
-									if (stopResponseFlag) break;
-									// 检查是否遇到标签起始
-									if (fullTextChunk[i] === "<") {
-										const endTagIndex = fullTextChunk.indexOf(">", i);
-										if (endTagIndex !== -1) {
-											// 1. 找到了完整的标签，一次性追加到 content，不触发延迟
-											// 这样用户瞬间看到的是样式变化，而不是标签字符
-											responseMessage.content += fullTextChunk.slice(
-												i,
-												endTagIndex + 1
-											);
-											i = endTagIndex + 1;
-											continue;
-										} else {
-											// 2. 没找到闭合的 ">"，说明标签被截断了（例如只收到了 "<str"）
-											// 将剩下的所有字符存入 buffer，等待下一个数据包拼接
-											tagBuffer = fullTextChunk.slice(i);
-											break; // 结束本次循环，等待下一次数据
-										}
-									}
-									// 普通字符，逐个追加并延迟
-									responseMessage.content += fullTextChunk[i];
-									i++;
-									// 强制更新 Svelte 视图
+								stopChatTaskId = data.task_id;
+								console.log("stopChatTaskId-id-page", stopChatTaskId);
+								conversationId = data.conversation_id;
+								messages.at(-1).done = false;
+							}
+							if (data.event === "error") {
+								// if (!responseMessage.content) {
+								console.log(111);
+								responseMessage.error = true;
+								responseMessage.done = true;
+								responseMessage.content =
+									"您好，没有您想要的答案呢！可以换个问题问一问呢！";
+								messages = messages;
+								// }
+							}
+							if (responseMessage.content == "" && !data.answer) {
+								continue;
+							} else {
+								let resultString: any;
+
+								if (data.event === "message") {
+									responseMessage.content += data.answer;
+									// resultString += data.answer;
 									messages = messages;
-									await tick();
-									if (autoScroll) {
+									if (!responseMessage.content) {
+										responseMessage.error = true;
+										responseMessage.done = true;
+										responseMessage.content =
+											"您好，没有您想要的答案呢！可以换个问题问一问呢！";
+										messages = messages;
+									}
+									// const PRINT_SPEED = 50;
+
+									// 自动滚动控制
+									// let autoScroll = true;
+									// const chars = data.answer.split("");
+									// for (const char of chars) {
+									// 	responseMessage.content += char;
+									// 	// console.log("char", char);
+									// 	messages = messages;
+									// 	// ✅ 关键：每次更新都重新渲染完整 Markdown
+									// 	await tick(); // 等待 DOM 更新
+
+									// 	// 自动滚动到底部
+									// 	if (autoScroll) {
+									// 		window.scrollTo({
+									// 			top: document.body.scrollHeight,
+									// 			behavior: "smooth"
+									// 		});
+									// 	}
+
+									// 	// 控制打印速度
+									// 	await new Promise(resolve =>
+									// 		setTimeout(resolve, PRINT_SPEED)
+									// 	);
+									// 	//
+									// }
+
+									window.requestAnimationFrame(() => {
 										window.scrollTo({
 											top: document.body.scrollHeight,
-											behavior: "smooth" // 或 "auto" 以获得更好的性能
+											behavior: "smooth"
 										});
-									}
-									// 只有普通文字才延迟，HTML标签不延迟
-									await new Promise(resolve =>
-										setTimeout(resolve, PRINT_SPEED)
-									);
-								}
-								// // debugger;
-								// const PRINT_SPEED = 50;
-								// // 自动滚动控制
-								// let autoScroll = true;
-								// // 1. 先将 Markdown 解析为完整的 HTML
-								// let fullHtml: any = data.answer;
-								// // 2. 标签感知打字机逻辑
-								// let i = 0;
-								// while (i < fullHtml.length) {
-								// 	if (fullHtml[i] === "<") {
-								// 		// 如果遇到标签，找到标签结束位置，一次性追加整个标签
-								// 		const endTagIndex = fullHtml.indexOf(">", i);
-								// 		if (endTagIndex !== -1) {
-								// 			responseMessage.content += fullHtml.slice(
-								// 				i,
-								// 				endTagIndex + 1
-								// 			);
-								// 			i = endTagIndex + 1;
-								// 			// 标签追加不触发延迟，直接进入下一轮循环检查
-								// 			continue;
-								// 		}
-								// 	}
-								// 	// 如果是普通文字，逐字符追加并触发延迟
-								// 	responseMessage.content += fullHtml[i];
-								// 	i++;
-								// 	messages = messages;
-								// 	await tick();
-
-								// 	if (autoScroll) {
-								// 		window.scrollTo({
-								// 			top: document.body.scrollHeight,
-								// 			behavior: "smooth"
-								// 		});
-								// 	}
-
-								// 	await new Promise(resolve =>
-								// 		setTimeout(resolve, PRINT_SPEED)
-								// 	);
-								// }
-								// if (!responseMessage.content) {
-								// 	// responseMessage.error = true;
-								// 	responseMessage.done = true;
-								// 	responseMessage.content =
-								// 		"哎呀，问题已超纲！我已经认真记在小本本上啦，请期待我的进步哦！";
-								// 	messages = messages;
-								// }
-								window.requestAnimationFrame(() => {
-									window.scrollTo({
-										top: document.body.scrollHeight,
-										behavior: "smooth"
 									});
-								});
-								// if (!isRendering) {
-								// 	isRendering = true;
-								// 	renderBuffer();
-								// }
-							} else if (data.event === "workflow_finished") {
-								stopResponseFlag = true;
-								responseMessage.done = true;
-								messages.at(-1).done = true;
-								// break;
-							}
-							if ($settings.responseAutoCopy) {
-								copyToClipboard(responseMessage.content);
+									// if (!isRendering) {
+									// 	isRendering = true;
+									// 	renderBuffer();
+									// }
+								}
+								if ($settings.responseAutoCopy) {
+									copyToClipboard(responseMessage.content);
+								}
 							}
 						}
 					}
-				}
-			} catch (error: any) {
-				console.log("error", error);
-				console.log("error-response", response);
-				// responseMessage.error = true;
-				responseMessage.done = true;
-				responseMessage.content = response.message;
-				messages = messages;
-				// }
-				if ("detail" in error) {
-					toast.error(error.detail);
-				}
-				break;
+				} catch {}
 			}
-			if (autoScroll) {
-				window.scrollTo({ top: document.body.scrollHeight });
-			}
+		} catch (error) {
+			console.error("Fetch error:", error);
+			responseMessage.done = true;
+			responseMessage.content = error.message || "请求失败";
+			messages = messages;
+			toast.error(error.message || "网络请求失败");
+		} finally {
+			stopResponseFlag = false;
+			await tick();
+			// 保存会话记录
 			await $db.updateChatById(_chatId, {
 				title: title === "" ? "新会话" : title,
-				models: selectedModels,
-				options: {
-					seed: $settings.seed ?? undefined,
-					temperature: $settings.temperature ?? undefined,
-					repeat_penalty: $settings.repeat_penalty ?? undefined,
-					top_k: $settings.top_k ?? undefined,
-					top_p: $settings.top_p ?? undefined,
-					num_ctx: $settings.num_ctx ?? undefined,
-					...($settings.options ?? {})
-				},
+				// ... 其他保存逻辑保持不变
 				messages: messages,
 				history: history
 			});
-		}
-		stopResponseFlag = false;
-		await tick();
-		if (autoScroll) {
-			window.scrollTo({ top: document.body.scrollHeight });
-		}
-
-		if (messages.length == 2 && messages.at(1).content !== "") {
-			window.history.replaceState(history.state, "", `/c/${_chatId}`);
+			if (messages.length == 2 && messages.at(1).content !== "") {
+				window.history.replaceState(history.state, "", `/c/${_chatId}`);
+			}
 		}
 	};
-	// 用户发送问答
 	const submitPrompt = async (userPrompt: any, files: any = []) => {
 		if (!userPrompt) {
 			return;
@@ -459,6 +677,10 @@
 	};
 	const stopResponse = async () => {
 		const response: any = await stopChat({ taskId: stopChatTaskId });
+		stopChatTaskId = "";
+		if ((response.code = "000000")) {
+			stopChatTaskId = "";
+		}
 		messages.at(-1).done = true;
 		stopResponseFlag = true;
 	};
@@ -675,6 +897,7 @@
 					{messages}
 					{submitPrompt}
 					{stopResponse}
+					{stopChatTaskId}
 				/>
 			</div>
 			<!-- <div class="w-full h-[54px] fixd bottom-0"> -->
@@ -717,6 +940,7 @@
 				{messages}
 				{submitPrompt}
 				{stopResponse}
+				{stopChatTaskId}
 			/>
 			<div
 				class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
@@ -724,30 +948,5 @@
 				<p>内容由AI生成，仅供参考</p>
 			</div>
 		</div>
-
-		<!-- <div class=" py-2.5 flex flex-col justify-between w-full set-width">
-	<div class="max-w-2xl mx-auto w-full px-3 md:px-0 mt-10">
-		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
-	</div>
-
-	<div class="set-new-margin h-full mt-10 mb-32 w-full flex flex-col">
-		<Messages
-			bind:history
-			bind:messages
-			bind:autoScroll
-			bind:copyContent
-			{sendPrompt}
-			{regenerateResponse}
-		/>
-	</div>
-</div>
-
-<MessageInput
-	bind:prompt
-	bind:autoScroll
-	{messages}
-	{submitPrompt}
-	{stopResponse}
-/> -->
 	</div>
 {/if}
