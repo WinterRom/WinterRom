@@ -13,7 +13,7 @@
 	import { get } from "svelte/store";
 	import { userInfor, userName } from "$lib/stores";
 	import toast from "svelte-french-toast";
-	import { parse } from "svelte/compiler";
+	import Modal from "$lib/components/common/Modal.svelte";
 	import { feedbackMessage } from "$lib/api/chat";
 	export let sendPrompt: Function;
 	export let regenerateResponse: Function;
@@ -43,6 +43,52 @@
 		title: ""
 	};
 	let feedbackColor: any = [];
+	// 不喜欢弹窗
+	let showDislikeModal = false;
+	let dislikeReason: string = "";
+	let currentFeedbackItem: { message: any; index: number } | null = null;
+	// 图片大图显示
+	let showImagePreview = false;
+	let previewImageUrl = "";
+	let scale = 1;
+	// 图片放大功能 最大3倍
+	const zoomIn = () => {
+		scale = Math.min(scale + 0.25, 3);
+	};
+	// 图片缩小功能 最小0.5倍
+	const zoomOut = () => {
+		scale = Math.max(scale - 0.25, 0.1);
+	};
+	const closePreview = () => {
+		showImagePreview = false;
+	};
+	$: if (!showImagePreview) {
+		scale = 1;
+	}
+	// 打开弹窗
+	const openDislikeModal = (message: any, index: number) => {
+		currentFeedbackItem = { message, index };
+		dislikeReason = ""; // 重置输入框
+		showDislikeModal = true;
+	};
+
+	// 确认提交不喜欢
+	const confirmDislike = () => {
+		if (currentFeedbackItem) {
+			const { message, index } = currentFeedbackItem;
+			// 更新本地 UI 状态
+			feedbackColor[index] = "dislike";
+			// 调用接口，传入 'dislike' 和 原因
+			likeMessageHandler(message, "dislike", dislikeReason);
+		}
+		showDislikeModal = false;
+	};
+
+	// 取消
+	const cancelDislike = () => {
+		showDislikeModal = false;
+		currentFeedbackItem = null;
+	};
 	$: if ($userName) {
 		userNames = get(userName);
 	}
@@ -245,13 +291,18 @@
 		);
 	};
 
-	const likeMessageHandler = async (message: any, feedback: any) => {
+	const likeMessageHandler = async (
+		message: any,
+		feedback: any,
+		content: string = ""
+	) => {
 		const form: any = {
 			conversationId: message.conversationId,
 			messageId: message.messageId,
 			answer: message.content,
 			title: message.query,
-			rating: feedback
+			rating: feedback,
+			content: content
 		};
 		const response: any = await feedbackMessage(form);
 		console.log("response", response);
@@ -474,6 +525,9 @@
 	.currentdislikecolor {
 		color: #ff2424;
 	}
+	.set-new-bg {
+		background-color: transparent !important;
+	}
 </style>
 <!--没有会话消息默认新对话框-->
 {#if messages.length == 0}
@@ -634,12 +688,22 @@
 													{#each message.files as file}
 														<div class="w-16">
 															{#if file?.type === "image"}
-																<img
-																	src={file?.url}
-																	alt="input"
-																	class=" h-full w-full object-cover cursor-pointer"
-																	draggable="false"
-																/>
+																<!-- svelte-ignore a11y-click-events-have-key-events -->
+																<button
+																	type="button"
+																	class=" w-full p-0 border-0 bg-transparent cursor-pointer outline-none"
+																	on:click={() => {
+																		previewImageUrl = file?.url;
+																		showImagePreview = true;
+																	}}
+																>
+																	<img
+																		src={file?.url}
+																		alt="input"
+																		class=" h-full w-full object-cover cursor-pointer"
+																		draggable="false"
+																	/></button
+																>
 															{/if}
 														</div>
 													{/each}
@@ -653,7 +717,7 @@
 												<button
 													class="invisible group-hover:visible p-1 rounded dark:hover:bg-gray-800 transition"
 													on:click={() => {
-														editMessageHandler(message);
+														editMessageHandler(message.id);
 													}}
 													id="useredit-{message.id}"
 												>
@@ -970,81 +1034,93 @@
 																/></svg
 															>
 														</button> -->
-														{#if message?.feedback?.rating === null}
-															<button
-																class="{messageIdx + 1 === messages.length
-																	? 'visible'
-																	: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
-																on:click={() => {
-																	feedbackColor[messageIdx] = "like";
-																	console.log(
-																		'feedbackColor[messageIdx] != "like".',
-																		feedbackColor[messageIdx] != "like"
-																	);
-																	console.log(
-																		"!message?.feedback?.rating ",
-																		!message?.feedback?.rating
-																	);
-																	likeMessageHandler(
-																		message,
-																		message?.feedback?.rating === "like"
-																			? null
-																			: feedbackColor[messageIdx]
-																	);
-																}}
-																id="edit-{message.id}"
-															>
-																<svg
-																	viewBox="0 0 24 24"
-																	xmlns="http://www.w3.org/2000/svg"
-																	width="24"
-																	height="24"
-																	fill="currentColor"
-																	class="remixicon h-4 w-4 {feedbackColor[
-																		messageIdx
-																	] === 'like' ||
-																	message?.feedback?.rating === 'like'
-																		? 'currentlikecolor'
-																		: ''}"
-																	><path
-																		d="M14.5998 8.00033H21C22.1046 8.00033 23 8.89576 23 10.0003V12.1047C23 12.3659 22.9488 12.6246 22.8494 12.8662L19.755 20.3811C19.6007 20.7558 19.2355 21.0003 18.8303 21.0003H2C1.44772 21.0003 1 20.5526 1 20.0003V10.0003C1 9.44804 1.44772 9.00033 2 9.00033H5.48184C5.80677 9.00033 6.11143 8.84246 6.29881 8.57701L11.7522 0.851355C11.8947 0.649486 12.1633 0.581978 12.3843 0.692483L14.1984 1.59951C15.25 2.12534 15.7931 3.31292 15.5031 4.45235L14.5998 8.00033ZM7 10.5878V19.0003H18.1606L21 12.1047V10.0003H14.5998C13.2951 10.0003 12.3398 8.77128 12.6616 7.50691L13.5649 3.95894C13.6229 3.73105 13.5143 3.49353 13.3039 3.38837L12.6428 3.0578L7.93275 9.73038C7.68285 10.0844 7.36341 10.3746 7 10.5878ZM5 11.0003H3V19.0003H5V11.0003Z"
-																	/></svg
+														{#if message.answer}
+															{#if (feedbackColor[messageIdx] !== undefined ? feedbackColor[messageIdx] : message?.feedback?.rating) !== "dislike"}
+																<button
+																	class="{messageIdx + 1 === messages.length
+																		? 'visible'
+																		: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
+																	on:click={() => {
+																		// 计算当前状态（优先使用本地状态，否则使用历史状态）
+																		const currentRating =
+																			feedbackColor[messageIdx] !== undefined
+																				? feedbackColor[messageIdx]
+																				: message?.feedback?.rating;
+
+																		// 判断是否是取消操作
+																		const isLike = currentRating === "like";
+																		const newLocal = isLike ? "" : "like"; // 本地设为空字符串代表取消
+																		const newApi = isLike ? null : "like"; // API 发送 null 代表取消
+
+																		feedbackColor[messageIdx] = newLocal;
+
+																		likeMessageHandler(message, newApi);
+																	}}
+																	id="like-{message.id}"
 																>
-															</button>
+																	<svg
+																		viewBox="0 0 24 24"
+																		xmlns="http://www.w3.org/2000/svg"
+																		width="24"
+																		height="24"
+																		fill="currentColor"
+																		class="remixicon h-4 w-4 {(feedbackColor[
+																			messageIdx
+																		] !== undefined
+																			? feedbackColor[messageIdx]
+																			: message?.feedback?.rating) === 'like'
+																			? 'currentlikecolor'
+																			: ''}"
+																		><path
+																			d="M14.5998 8.00033H21C22.1046 8.00033 23 8.89576 23 10.0003V12.1047C23 12.3659 22.9488 12.6246 22.8494 12.8662L19.755 20.3811C19.6007 20.7558 19.2355 21.0003 18.8303 21.0003H2C1.44772 21.0003 1 20.5526 1 20.0003V10.0003C1 9.44804 1.44772 9.00033 2 9.00033H5.48184C5.80677 9.00033 6.11143 8.84246 6.29881 8.57701L11.7522 0.851355C11.8947 0.649486 12.1633 0.581978 12.3843 0.692483L14.1984 1.59951C15.25 2.12534 15.7931 3.31292 15.5031 4.45235L14.5998 8.00033ZM7 10.5878V19.0003H18.1606L21 12.1047V10.0003H14.5998C13.2951 10.0003 12.3398 8.77128 12.6616 7.50691L13.5649 3.95894C13.6229 3.73105 13.5143 3.49353 13.3039 3.38837L12.6428 3.0578L7.93275 9.73038C7.68285 10.0844 7.36341 10.3746 7 10.5878ZM5 11.0003H3V19.0003H5V11.0003Z"
+																		/></svg
+																	>
+																</button>
+															{/if}
+
+															{#if (feedbackColor[messageIdx] !== undefined ? feedbackColor[messageIdx] : message?.feedback?.rating) !== "like"}
+																<button
+																	class="{messageIdx + 1 === messages.length
+																		? 'visible'
+																		: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
+																	on:click={() => {
+																		// 获取当前状态（优先读取本地操作状态 feedbackColor，如果没有则读取历史状态 message.feedback.rating）
+																		const currentRating =
+																			feedbackColor[messageIdx] !== undefined
+																				? feedbackColor[messageIdx]
+																				: message?.feedback?.rating;
+
+																		if (currentRating === "dislike") {
+																			// 如果已经是 dislike 状态，点击则是“取消不喜欢”（无需弹窗）
+																			feedbackColor[messageIdx] = ""; // 清空本地状态
+																			likeMessageHandler(message, null);
+																		} else {
+																			// 如果当前不是 dislike，则打开弹窗输入原因
+																			openDislikeModal(message, messageIdx);
+																		}
+																	}}
+																	id="dislike-{message.id}"
+																>
+																	<svg
+																		viewBox="0 0 24 24"
+																		xmlns="http://www.w3.org/2000/svg"
+																		width="24"
+																		height="24"
+																		fill="currentColor"
+																		class="remixicon h-4 w-4 {(feedbackColor[
+																			messageIdx
+																		] !== undefined
+																			? feedbackColor[messageIdx]
+																			: message?.feedback?.rating) === 'dislike'
+																			? 'currentdislikecolor'
+																			: ''}"
+																		><path
+																			d="M9.40017 16H3C1.89543 16 1 15.1046 1 14V11.8957C1 11.6344 1.05118 11.3757 1.15064 11.1342L4.24501 3.61925C4.3993 3.24455 4.76447 3 5.16969 3H22C22.5523 3 23 3.44772 23 4V14C23 14.5523 22.5523 15 22 15H18.5182C18.1932 15 17.8886 15.1579 17.7012 15.4233L12.2478 23.149C12.1053 23.3508 11.8367 23.4184 11.6157 23.3078L9.80163 22.4008C8.74998 21.875 8.20687 20.6874 8.49694 19.548L9.40017 16ZM17 13.4125V5H5.83939L3 11.8957V14H9.40017C10.7049 14 11.6602 15.229 11.3384 16.4934L10.4351 20.0414C10.3771 20.2693 10.4857 20.5068 10.6961 20.612L11.3572 20.9425L16.0673 14.27C16.3172 13.9159 16.6366 13.6257 17 13.4125ZM19 13H21V5H19V13Z"
+																		/></svg
+																	>
+																</button>
+															{/if}
 														{/if}
-														{#if message?.feedback?.rating === null}
-															<button
-																class="{messageIdx + 1 === messages.length
-																	? 'visible'
-																	: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
-																on:click={() => {
-																	feedbackColor[messageIdx] = "dislike";
-																	likeMessageHandler(
-																		message,
-																		message?.feedback?.rating === "dislike"
-																			? null
-																			: feedbackColor[messageIdx]
-																	);
-																}}
-																id="edit-{message.id}"
-															>
-																<svg
-																	viewBox="0 0 24 24"
-																	xmlns="http://www.w3.org/2000/svg"
-																	width="24"
-																	height="24"
-																	fill="currentColor"
-																	class="remixicon h-4 w-4 {feedbackColor[
-																		messageIdx
-																	] === 'dislike' ||
-																	message?.feedback?.rating === 'dislike'
-																		? 'currentdislikecolor'
-																		: ''}"
-																	><path
-																		d="M9.40017 16H3C1.89543 16 1 15.1046 1 14V11.8957C1 11.6344 1.05118 11.3757 1.15064 11.1342L4.24501 3.61925C4.3993 3.24455 4.76447 3 5.16969 3H22C22.5523 3 23 3.44772 23 4V14C23 14.5523 22.5523 15 22 15H18.5182C18.1932 15 17.8886 15.1579 17.7012 15.4233L12.2478 23.149C12.1053 23.3508 11.8367 23.4184 11.6157 23.3078L9.80163 22.4008C8.74998 21.875 8.20687 20.6874 8.49694 19.548L9.40017 16ZM17 13.4125V5H5.83939L3 11.8957V14H9.40017C10.7049 14 11.6602 15.229 11.3384 16.4934L10.4351 20.0414C10.3771 20.2693 10.4857 20.5068 10.6961 20.612L11.3572 20.9425L16.0673 14.27C16.3172 13.9159 16.6366 13.6257 17 13.4125ZM19 13H21V5H19V13Z"
-																	/></svg
-																>
-															</button>{/if}
 														<button
 															class="{messageIdx + 1 === messages.length
 																? 'visible'
@@ -1101,7 +1177,7 @@
 																class="{messageIdx + 1 === messages.length
 																	? 'visible'
 																	: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
-																on:click={() => regenerateResponse}
+																on:click={() => regenerateResponse()}
 																id="refesh-{message.id}"
 															>
 																<svg
@@ -1137,5 +1213,123 @@
 
 	{#if bottomPadding}
 		<div class=" mb-10" />
+	{/if}
+	<!-- <Modal bind:show={showImagePreview}>
+		<div class="flex justify-center p-2">
+			<img
+				src={previewImageUrl}
+				alt="preview"
+				class="max-w-full max-h-[80vh] rounded-lg"
+				draggable="false"
+			/>
+		</div>
+	</Modal> -->
+	<Modal bind:show={showImagePreview} class="set-new-bg">
+		<div class="fixed top-4 right-4 flex space-x-2 z-10">
+			<button
+				class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition shadow-sm"
+				on:click|stopPropagation={zoomIn}
+				title="放大"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="2"
+					stroke="currentColor"
+					class="w-5 h-5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M12 4.5v15m7.5-7.5h-15"
+					/>
+				</svg>
+			</button>
+
+			<button
+				class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition shadow-sm"
+				on:click|stopPropagation={zoomOut}
+				title="缩小"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="2"
+					stroke="currentColor"
+					class="w-5 h-5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M19.5 12h-15"
+					/>
+				</svg>
+			</button>
+
+			<button
+				class="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition shadow-sm"
+				on:click|stopPropagation={closePreview}
+				title="关闭"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="2"
+					stroke="currentColor"
+					class="w-5 h-5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M6 18L18 6M6 6l12 12"
+					/>
+				</svg>
+			</button>
+		</div>
+
+		<img
+			src={previewImageUrl}
+			alt="preview"
+			class="transition-transform duration-200 ease-in-out object-contain max-w-full max-h-[80vh]"
+			style="transform: scale({scale})"
+			draggable="false"
+		/>
+	</Modal>
+	{#if showDislikeModal}
+		<div
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		>
+			<div
+				class="bg-white dark:bg-gray-900 rounded-xl w-full max-w-md p-6 shadow-2xl transform transition-all"
+			>
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+					请告诉我们您不喜欢的原因
+				</h3>
+
+				<textarea
+					class="w-full h-32 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-800 dark:text-gray-100 resize-none text-sm"
+					placeholder="请输入您的反馈，帮助我们改进..."
+					bind:value={dislikeReason}
+				/>
+
+				<div class="flex justify-end space-x-3 mt-5">
+					<button
+						class="px-4 py-2 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition outline outline-1 outline-gray-200 dark:outline-gray-700 rounded-lg text-sm font-medium"
+						on:click={cancelDislike}
+					>
+						取消
+					</button>
+					<button
+						class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white transition rounded-lg text-sm font-medium shadow-sm"
+						on:click={confirmDislike}
+					>
+						提交反馈
+					</button>
+				</div>
+			</div>
+		</div>
 	{/if}
 {/if}

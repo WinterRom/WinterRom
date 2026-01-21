@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { fade } from "svelte/transition";
-
+	let className = "";
+	export { className as class };
 	export let show = true;
 	let mounted = false;
 
@@ -28,9 +29,9 @@
 		}}
 	>
 		<div
-			class="m-auto rounded-xl max-w-full w-[40rem] mx-2 bg-gray-50 dark:bg-gray-900 shadow-3xl"
+			class="m-auto rounded-xl max-w-full w-[40rem] mx-2 dark:bg-gray-900 shadow-3xl {className}"
 			transition:fade={{ delay: 100, duration: 200 }}
-			on:click={(e) => {
+			on:click={e => {
 				e.stopPropagation();
 			}}
 		>

@@ -40,6 +40,7 @@
 	let isStreaming = false;
 	let stopChatTaskId = "";
 	let conversationId: string = "";
+	let chatMessageIfStop: boolean = false;
 	$: if (copyContent) {
 		prompt = copyContent;
 		tick();
@@ -407,7 +408,7 @@
 	) => {
 		isStreaming = true;
 		stopChatTaskId = "";
-
+		chatMessageIfStop = false;
 		// 1. 初始化新消息对象
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
@@ -416,7 +417,12 @@
 			childrenIds: [],
 			role: "assistant",
 			content: "",
-			isShow: false
+			isShow: false,
+			messageId: "",
+			feedback: null,
+			conversationId: "",
+			query: userPrompt,
+			answer: "" // 判断是否有答案
 		};
 
 		// 2. 更新历史记录（数据源）
@@ -481,9 +487,10 @@
 
 				// 检查是否停止
 				if (done || stopResponseFlag) {
-					if (stopResponseFlag) {
+					if (stopResponseFlag && !chatMessageIfStop) {
 						if (uiMessage) uiMessage.content += " [已停止]";
 						responseMessage.content += " [已停止]";
+						responseMessage.answer = "";
 					}
 					responseMessage.done = true;
 					if (uiMessage) uiMessage.done = true;
@@ -512,6 +519,8 @@
 						if (data.event === "workflow_started") {
 							stopChatTaskId = data.task_id;
 							conversationId = data.conversation_id;
+							responseMessage.conversationId = data.conversation_id;
+							responseMessage.messageId = data.message_id;
 						}
 
 						// 处理消息内容
@@ -581,7 +590,9 @@
 								});
 							}
 						}
-
+						if (data.event === "message_end") {
+							chatMessageIfStop = true;
+						}
 						if (data.event === "error") {
 							const errorMsg = " 发生错误";
 							responseMessage.content += errorMsg;
@@ -672,12 +683,15 @@
 	};
 
 	const regenerateResponse = async () => {
-		const _chatId = JSON.parse(JSON.stringify($chatId));
+		const _chatId = conversationId;
 		if (messages.length != 0 && messages.at(-1).done == true) {
 			messages.splice(messages.length - 1, 1);
 			messages = messages;
 			let userMessage = messages.at(-1);
+			console.log("userMessage", userMessage);
+
 			let userPrompt = userMessage.content;
+			console.log("userPrompt", userPrompt);
 			await sendPrompt(userPrompt, userMessage.id, _chatId);
 		}
 	};
@@ -862,12 +876,12 @@
 			</div>
 		</div>
 		<Modal bind:show>
-			<Sidebar bind:show />
+			<Sidebar bind:show {isMobile} />
 		</Modal>
 	</div>
 {:else}
 	<div class="min-h-screen w-full flex justify-center bgcolor">
-		<div class="sidebar-left"><Sidebar bind:show /></div>
+		<div class="sidebar-left"><Sidebar bind:show {isMobile} /></div>
 		<div class="content-right set-input-width" id="setInputWidth">
 			<div class="nav-bar content-right fixed top-0"><Navbar {title} /></div>
 			<!-- <div class=" mx-auto w-full md:px-0 mt-10">

@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { v4 as uuidv4 } from "uuid";
+	import { logout } from "$lib/api/user";
+	import { getToken, setToken, removeToken } from "$lib/utils/cookie";
+	import tippy from "tippy.js";
 	const redirectUrl: any = import.meta.env.VITE_APP_SSO_REDIRECT_URL;
 	import {
 		getChat,
@@ -19,13 +22,14 @@
 	import { swipe } from "$lib/utils/swipe";
 	export let show = false;
 	export let conversationId = "";
+	export let isMobile: boolean;
 	let navElement;
 	let importFileInputElement: any;
 	let importFiles: any;
-
+	let showLongOutbtn: boolean = false;
 	let title: string = "新小C";
 	let search = "";
-
+	let username: HTMLElement;
 	let chatDeleteId: string = "";
 	// let windowWidth = 0;
 	// $: isMobile = windowWidth <= 1040;
@@ -36,6 +40,10 @@
 	let userNames: string = "";
 	let selectStatus: any[] = [];
 	onMount(async () => {
+		tippy(username, {
+			content: "是否退出登录"
+			// 其他Tippy选项...
+		});
 		// handleResize
 		if (window.innerWidth > 1280) {
 			show = true;
@@ -46,10 +54,11 @@
 	$: if ($userName) {
 		userNames = get(userName);
 	}
-	// [新增] 用于记录当前被滑动的条目 ID
+
+	// 用于记录当前被滑动的条目 ID
 	let swipedItemId: string = "";
 
-	// [新增] 处理滑动手势
+	//  处理滑动手势
 	function handleSwipeLeft(id: string) {
 		swipedItemId = id; // 标记该条目为左滑状态
 	}
@@ -68,11 +77,10 @@
 	};
 	const loadChat = async (id: any, i: number) => {
 		// 设置当前的 chatId store，以便页面能够感知到切换
-		await chatId.set(id);
-		goto(`/c/${id}`);
-
 		show = window.innerWidth > 1040;
 		selectStatus[i] = true;
+		await chatId.set(id);
+		goto(`/c/${id}`);
 	};
 
 	const editChatTitle = async (id: any, name: any) => {
@@ -105,7 +113,11 @@
 		});
 		saveAs(blob, `chat-export-${Date.now()}.json`);
 	};
-
+	const goLogOut = async () => {
+		await logout();
+		removeToken();
+		goto(redirectUrl);
+	};
 	$: if (importFiles) {
 		let reader = new FileReader();
 		reader.onload = (event: any) => {
@@ -191,6 +203,13 @@
 					getChatConversationsList();
 					goto("/");
 					await chatId.set(uuidv4());
+					// chatList.push({
+					// 	id: uuidv4(),
+					// 	inputs: {},
+					// 	introduction: "",
+					// 	name: "新对话",
+					// 	status: "normal"
+					// });
 					// createNewChat();
 				}}
 			>
@@ -425,7 +444,8 @@
 				}) as chat, i}
 				<div
 					class=" w-full pr-2 relative {selectStatus[i] ||
-					chat.id === conversationId
+					chat.id === conversationId ||
+					chat.id === $chatId
 						? 'set-select-bgc'
 						: ''}"
 					use:swipe
@@ -626,7 +646,7 @@
 		<!--用户-->
 		<div class="px-2.5 flex justify-center space-x-2">
 			<div
-				class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover transition"
+				class="flex-grow flex justify-between rounded-md px-3 py-1.5 hover transition"
 			>
 				<div class="flex self-center">
 					<div class="self-center mr-3.5">
@@ -641,9 +661,9 @@
 
 					<div class=" self-center font-medium text-sm">
 						{#if userNames}
-							<div>
+							<span>
 								{userNames}
-							</div>
+							</span>
 						{:else}
 							<button
 								class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover transition"
@@ -658,6 +678,83 @@
 					</div>
 				</div>
 			</div>
+			{#if show && isMobile}
+				{#if showLongOutbtn}
+					<div
+						class="fixed h-8 flex leading-loose rounded-md items-center px-3.5 transition"
+						style="bottom: 3.5rem;left:7rem"
+					>
+						<div class="flex items-center">
+							<span>是否确定退出？</span>
+						</div>
+
+						<div class="flex space-x-1.5 items-center">
+							<button
+								class="hover:text-customBlue transition"
+								on:click={() => {
+									showLongOutbtn = false;
+									goLogOut();
+								}}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 20 20"
+									fill="currentColor"
+									class="w-4 h-4"
+								>
+									<path
+										fill-rule="evenodd"
+										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+										clip-rule="evenodd"
+									/>
+								</svg>
+							</button>
+							<button
+								class="hover:text-customRed transition"
+								on:click={() => {
+									showLongOutbtn = false;
+								}}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 20 20"
+									fill="currentColor"
+									class="w-4 h-4"
+								>
+									<path
+										d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
+				{/if}
+				<button
+					class="hover:text-white transition self-center"
+					on:click={() => {
+						showLongOutbtn = true;
+					}}
+					bind:this={username}
+					><svg
+						class="icon self-center"
+						viewBox="0 0 1024 1024"
+						version="1.1"
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						><path
+							d="M585.142857 914.285714H219.428571c-58.514286 0-109.714286-51.2-109.714285-109.714285V219.428571c0-58.514286 51.2-109.714286 109.714285-109.714285h365.714286c58.514286 0 109.714286 51.2 109.714286 109.714285v73.142858c0 21.942857-14.628571 36.571429-36.571429 36.571428s-36.571429-14.628571-36.571428-36.571428V219.428571c0-21.942857-14.628571-36.571429-36.571429-36.571428H219.428571c-21.942857 0-36.571429 14.628571-36.571428 36.571428v585.142858c0 21.942857 14.628571 36.571429 36.571428 36.571428h365.714286c21.942857 0 36.571429-14.628571 36.571429-36.571428v-73.142858c0-21.942857 14.628571-36.571429 36.571428-36.571428s36.571429 14.628571 36.571429 36.571428v73.142858c0 58.514286-51.2 109.714286-109.714286 109.714285z"
+							fill="#1B78F4"
+						/><path
+							d="M804.571429 650.971429c-7.314286 0-21.942857 0-29.257143-7.314286-14.628571-14.628571-14.628571-36.571429 0-51.2L855.771429 512l-80.457143-80.457143c-14.628571-14.628571-14.628571-36.571429 0-51.2s36.571429-14.628571 51.2 0l102.4 102.4c14.628571 14.628571 14.628571 36.571429 0 51.2l-102.4 102.4c0 14.628571-14.628571 14.628571-21.942857 14.628572z"
+							fill="#1B78F4"
+						/><path
+							d="M877.714286 548.571429H512c-21.942857 0-36.571429-14.628571-36.571429-36.571429s14.628571-36.571429 36.571429-36.571429h365.714286c21.942857 0 36.571429 14.628571 36.571428 36.571429s-14.628571 36.571429-36.571428 36.571429z"
+							fill="#1B78F4"
+						/></svg
+					></button
+				>
+			{/if}
 		</div>
 		<!-- <div class="px-2.5">
 			<hr class=" border-gray-800 mb-2 w-full" />

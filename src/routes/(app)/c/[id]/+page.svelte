@@ -232,6 +232,8 @@
 		// 	// selectedModels.map(async model => {
 		// 	// })
 		// )
+		console.log(userPrompt, parentId, _chatId, fileId);
+
 		await sendPromptOllama(userPrompt, parentId, _chatId, fileId);
 		// await chats.set(await $db.getChats());
 	};
@@ -244,6 +246,7 @@
 	) => {
 		isStreaming = true;
 		stopChatTaskId = "";
+		console.log("启动");
 
 		// 1. 初始化新消息对象
 		let responseMessageId = uuidv4();
@@ -762,7 +765,8 @@
 
 			let userMessage = messages.at(-1);
 			let userPrompt = userMessage.content;
-
+			console.log("userPrompt", userPrompt);
+			console.log("userMessage", userMessage);
 			await sendPrompt(userPrompt, userMessage.id, _chatId);
 		}
 	};
@@ -985,12 +989,12 @@
 				</div>
 			</div>
 			<Modal bind:show>
-				<Sidebar bind:show bind:conversationId />
+				<Sidebar bind:show bind:conversationId {isMobile} />
 			</Modal>
 		</div>
 	{:else}
 		<div class="min-h-screen w-full flex justify-center bgcolor">
-			<div class="sidebar-left"><Sidebar bind:show /></div>
+			<div class="sidebar-left"><Sidebar bind:show {isMobile} /></div>
 			<div class="content-right">
 				<div class="nav-bar content-right fixed py-2.5 top-0">
 					<Navbar {title} />

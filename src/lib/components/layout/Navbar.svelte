@@ -16,7 +16,7 @@
 	let newChat: HTMLElement;
 	onMount(() => {
 		tippy(username, {
-			content: "退出登录"
+			content: "是否退出登录"
 			// 其他Tippy选项...
 		});
 		tippy(newChat, {
