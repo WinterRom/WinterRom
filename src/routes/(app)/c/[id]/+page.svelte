@@ -17,7 +17,14 @@
 		convertBackendMessagesToHistory
 	} from "$lib/utils";
 	import { goto } from "$app/navigation";
-	import { models, settings, db, chats, chatId } from "$lib/stores";
+	import {
+		models,
+		settings,
+		db,
+		chats,
+		chatId,
+		temporaryChat
+	} from "$lib/stores";
 	import Sidebar from "$lib/components/layout/Sidebar.svelte";
 	import MessageInput from "$lib/components/chat/MessageInput.svelte";
 	import Messages from "$lib/components/chat/Messages.svelte";
@@ -159,6 +166,22 @@
 		await chatId.set($page.params.id);
 		conversationId = $page.params.id; // 确保 conversationId 初始化
 
+		// if (!$temporaryChat?.isTemp) {
+		// 	temporaryChat.set({
+		// 		isTemp: true,
+		// 		name: "新对话",
+		// 		id: $temporaryChat?.id
+		// 	});
+		// }
+		if ($temporaryChat?.id === conversationId) {
+			temporaryChat.set({
+				isTemp: true,
+				name: "新对话",
+				id: $temporaryChat?.id
+			});
+			return;
+		}
+
 		const params: any = { conversationId: conversationId };
 		try {
 			const { data } = await getConversationMessageList(params);
@@ -189,7 +212,8 @@
 				return data;
 			}
 		} catch (e) {
-			goto("/"); // 失败则返回首页
+			// temporaryChat不存在，失败则返回首页
+			!$temporaryChat?.id && goto("/");
 		}
 	};
 	const copyToClipboard = (text: string, usercopy?: any) => {
@@ -232,8 +256,6 @@
 		// 	// selectedModels.map(async model => {
 		// 	// })
 		// )
-		console.log(userPrompt, parentId, _chatId, fileId);
-
 		await sendPromptOllama(userPrompt, parentId, _chatId, fileId);
 		// await chats.set(await $db.getChats());
 	};
@@ -246,8 +268,6 @@
 	) => {
 		isStreaming = true;
 		stopChatTaskId = "";
-		console.log("启动");
-
 		// 1. 初始化新消息对象
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
@@ -765,8 +785,6 @@
 
 			let userMessage = messages.at(-1);
 			let userPrompt = userMessage.content;
-			console.log("userPrompt", userPrompt);
-			console.log("userMessage", userMessage);
 			await sendPrompt(userPrompt, userMessage.id, _chatId);
 		}
 	};
@@ -921,8 +939,18 @@
 						<button
 							class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 							on:click={async () => {
-								goto("/");
-								await chatId.set(uuidv4());
+								// getChatConversationsList()
+								// goto("/");
+								!$temporaryChat && goto("/");
+								// await chatId.set(uuidv4());
+								const newId = uuidv4();
+								await chatId.set(newId);
+								// 重新生成临时会话
+								temporaryChat.set({
+									id: newId,
+									name: "新对话",
+									isTemp: true
+								});
 							}}
 						>
 							<svg

@@ -8,7 +8,7 @@
 	import { onMount, tick, onDestroy } from "svelte";
 	import { splitStream } from "$lib/utils";
 	import { getToken, setToken, removeToken } from "$lib/utils/cookie";
-	import { settings, db, chats, chatId } from "$lib/stores";
+	import { settings, db, chats, chatId, temporaryChat } from "$lib/stores";
 	import Sidebar from "$lib/components/layout/Sidebar.svelte";
 	import MessageInput from "$lib/components/chat/MessageInput.svelte";
 	import Messages from "$lib/components/chat/Messages.svelte";
@@ -82,7 +82,12 @@
 	onDestroy(() => {
 		window.removeEventListener("resize", handleResize);
 	});
-
+	const getChatConversationsList = async () => {
+		const { data } = await getChatList();
+		// chatList = data;
+		chats.set(data);
+		// let data = JSON.parse(conversationsList);
+	};
 	//////////////////////////
 	// Web functions
 	//////////////////////////
@@ -526,7 +531,7 @@
 						// 处理消息内容
 						if (data.event === "message") {
 							const content = data.answer;
-
+							responseMessage.answer = data.answer;
 							const PRINT_SPEED = 30;
 
 							// 自动滚动控制
@@ -637,7 +642,16 @@
 
 		const chatElement: any = document.getElementById("chat-textarea");
 		if (chatElement) chatElement.style.height = "";
-
+		if (
+			messages.length === 0 &&
+			$temporaryChat &&
+			$temporaryChat.id === $chatId
+		) {
+			temporaryChat.update((chat: any) => ({
+				...chat,
+				name: userPrompt
+			}));
+		}
 		// 1. 生成用户消息并保存到 history
 		let userMessageId = uuidv4();
 		let userMessage: any = {
@@ -688,10 +702,7 @@
 			messages.splice(messages.length - 1, 1);
 			messages = messages;
 			let userMessage = messages.at(-1);
-			console.log("userMessage", userMessage);
-
 			let userPrompt = userMessage.content;
-			console.log("userPrompt", userPrompt);
 			await sendPrompt(userPrompt, userMessage.id, _chatId);
 		}
 	};
@@ -761,6 +772,7 @@
 					<button
 						class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 						on:click={async () => {
+							getChatConversationsList();
 							show = !show;
 						}}
 					>
@@ -808,8 +820,16 @@
 					<button
 						class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 						on:click={async () => {
-							goto("/");
-							await chatId.set(uuidv4());
+							// goto("/");
+							!$temporaryChat && goto("/");
+							const newId = uuidv4();
+							await chatId.set(newId);
+							// 重新生成临时会话
+							temporaryChat.set({
+								id: newId,
+								name: "新对话",
+								isTemp: true
+							});
 						}}
 					>
 						<svg

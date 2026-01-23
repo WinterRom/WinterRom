@@ -22,3 +22,5 @@ export const showSettings: any = writable(false);
 export const userInfor: any = writable({});
 export const setToken: any = writable("");
 export const userName: any = writable<string | null>(null);
+// 临时对话Store
+export const temporaryChat: any = writable(null);

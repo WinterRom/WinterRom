@@ -15,11 +15,12 @@
 	const { saveAs } = fileSaver;
 	//	@ts-ignore
 	import { goto } from "$app/navigation";
-	import { db, chats, showSettings, chatId } from "$lib/stores";
+	import { db, chats, showSettings, chatId, temporaryChat } from "$lib/stores";
 	import { onMount, tick } from "svelte";
 	import { get } from "svelte/store";
 	import { userInfor, userName } from "$lib/stores";
 	import { swipe } from "$lib/utils/swipe";
+	import toast from "svelte-french-toast";
 	export let show = false;
 	export let conversationId = "";
 	export let isMobile: boolean;
@@ -27,9 +28,11 @@
 	let importFileInputElement: any;
 	let importFiles: any;
 	let showLongOutbtn: boolean = false;
-	let title: string = "新小C";
+	let title: string = "小C+";
 	let search = "";
 	let username: HTMLElement;
+	let renameChatRecord: HTMLElement;
+	let deleteChstRecord: HTMLElement;
 	let chatDeleteId: string = "";
 	// let windowWidth = 0;
 	// $: isMobile = windowWidth <= 1040;
@@ -39,16 +42,21 @@
 	let showDeleteHistoryConfirm = false;
 	let userNames: string = "";
 	let selectStatus: any[] = [];
+	// 用于记录当前被滑动的条目 ID
+
+	// 用于记录当前鼠标悬停的条目 ID (电脑端)
+	let hoveredItemId: string = "";
 	onMount(async () => {
 		tippy(username, {
 			content: "是否退出登录"
 			// 其他Tippy选项...
 		});
+
 		// handleResize
 		if (window.innerWidth > 1280) {
 			show = true;
 		}
-		getChatConversationsList();
+		!$temporaryChat?.id && getChatConversationsList();
 		// await chats.set(await $db.getChats());
 	});
 	$: if ($userName) {
@@ -57,7 +65,21 @@
 
 	// 用于记录当前被滑动的条目 ID
 	let swipedItemId: string = "";
-
+	let hoverTimeout: any;
+	const handleMouseEnter = (id: string) => {
+		if (isMobile) return;
+		clearTimeout(hoverTimeout);
+		hoveredItemId = id;
+	};
+	const handleMouseLeave = () => {
+		if (isMobile) return;
+		swipedItemId = "";
+		hoverTimeout = setTimeout(() => {
+			hoverTimeout = "";
+			hoveredItemId = "";
+			// clearTimeout(hoverTimeout);
+		}, 300);
+	};
 	//  处理滑动手势
 	function handleSwipeLeft(id: string) {
 		swipedItemId = id; // 标记该条目为左滑状态
@@ -66,37 +88,80 @@
 	function handleSwipeRight() {
 		swipedItemId = ""; // 复位，关闭所有侧滑
 	}
+	// Tooltip Action
+	function tooltip(node: HTMLElement, content: string) {
+		const instance = tippy(node, {
+			content: content, // 提示文字
+			placement: "bottom", // 在下方显示
+			arrow: true, // 显示小箭头
+			delay: [200, 0], // [显示延迟, 隐藏延迟] 防止划过时闪烁
+			duration: [200, 100], // 动画时长
+			touch: ["hold", 150]
+		});
+
+		return {
+			update(newContent: string) {
+				instance.setProps({ content: newContent });
+			},
+			destroy() {
+				instance.destroy();
+			}
+		};
+	}
 	// function handleResize() {
 	// 	windowWidth = window.innerWidth;
 	// 	show = windowWidth > 1040;
 	// }
 	const getChatConversationsList = async () => {
 		const { data } = await getChatList();
-		chatList = data;
+		// chatList = data;
+		chats.set(data);
 		// let data = JSON.parse(conversationsList);
 	};
 	const loadChat = async (id: any, i: number) => {
 		// 设置当前的 chatId store，以便页面能够感知到切换
+
 		show = window.innerWidth > 1040;
 		selectStatus[i] = true;
+		// temporaryChat.set(null);
 		await chatId.set(id);
 		goto(`/c/${id}`);
 	};
 
 	const editChatTitle = async (id: any, name: any) => {
-		const query: any = {
-			name: name,
-			conversationId: id
-		};
-		const { data } = await updateChatName(query);
-		getChatConversationsList();
-		chatTitle = "";
+		if ($temporaryChat?.id === id) {
+			temporaryChat.set({
+				id: id,
+				name: name,
+				isTemp: true
+			});
+			toast.success("修改成功");
+		} else {
+			const query: any = {
+				name: name,
+				conversationId: id
+			};
+			const data: any = await updateChatName(query);
+			data.code === "000000"
+				? toast.success(data.message)
+				: toast.error(data.message);
+			getChatConversationsList();
+			chatTitle = "";
+		}
 	};
 
 	const deleteChat = async (id: any) => {
-		const { data } = await deleteConversation({ conversationId: id });
+		if ($temporaryChat?.id === id) {
+			temporaryChat.set(null);
+			toast.success("删除成功");
+		} else {
+			const data: any = await deleteConversation({ conversationId: id });
+			data.code === "000000"
+				? toast.success(data.message)
+				: toast.error(data.message);
+		}
 		getChatConversationsList();
-		// goto("/");
+		goto("/");
 	};
 
 	const deleteChatHistory = async () => {
@@ -183,8 +248,19 @@
 			<button
 				class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover transition"
 				on:click={async () => {
-					goto("/");
-					tick();
+					// 获取最新列表
+					!isMobile && getChatConversationsList();
+					!$temporaryChat && goto("/");
+					const newId = uuidv4();
+					await chatId.set(newId);
+					temporaryChat.set({
+						id: newId,
+						name: "新对话",
+						isTemp: true
+					});
+					if (isMobile) {
+						show = false;
+					}
 				}}
 			>
 				<div class="flex self-center">
@@ -200,9 +276,26 @@
 			<button
 				class="flex-grow flex justify-between rounded-md px-3 py-1.5 mt-2 hover:bg-gray-1000 transition set-bg-boder"
 				on:click={async () => {
-					getChatConversationsList();
-					goto("/");
-					await chatId.set(uuidv4());
+					// 获取最新列表
+					!isMobile && getChatConversationsList();
+					// 重置路由和ID
+					// goto("/");
+					!$temporaryChat && goto("/");
+					const newId = uuidv4();
+					await chatId.set(newId);
+					// 设置临时会话
+					temporaryChat.set({
+						id: newId,
+						name: "新对话",
+						isTemp: true
+					});
+					if (isMobile) {
+						show = false;
+					}
+					// if (selectStatus.length > chatList.length) {
+					// 	getChatConversationsList();
+					// }
+					// await chatId.set(uuidv4());
 					// chatList.push({
 					// 	id: uuidv4(),
 					// 	inputs: {},
@@ -428,7 +521,7 @@
 
 		<div class="pl-2.5 my-2 flex-1 flex flex-col space-y-1 overflow-y-auto">
 			<!--@ts-ignore-->
-			{#each chatList.filter(// @ts-ignore
+			{#each ($temporaryChat ? [$temporaryChat, ...$chats] : $chats).filter(// @ts-ignore
 				chat => {
 					if (search === "") {
 						return true;
@@ -443,30 +536,64 @@
 					}
 				}) as chat, i}
 				<div
-					class=" w-full pr-2 relative {selectStatus[i] ||
+					class=" w-full pr-2 relative {(selectStatus[i]
+						? selectStatus[i]
+						: chat.isTemp) ||
 					chat.id === conversationId ||
 					chat.id === $chatId
 						? 'set-select-bgc'
 						: ''}"
+					style="touch-action: pan-y;"
+					role="group"
 					use:swipe
 					on:swiperight={() => handleSwipeRight()}
 					on:swipeleft={() => handleSwipeLeft(chat.id)}
+					on:mouseenter={() => handleMouseEnter(chat.id)}
+					on:mouseleave={() => handleMouseLeave()}
 				>
 					<button
 						class=" w-full flex justify-between rounded-md px-3 py-2 hover:bg-gray-1000 hover:900bg-gray- {chat.id
 							? ''
 							: 'bg-gray-1050'} transition whitespace-nowrap text-ellipsis"
 						on:click={() => {
-							selectStatus.length = chatList.length;
+							selectStatus = [];
+							selectStatus.length = $chats.length + ($temporaryChat ? 1 : 0);
 							// goto(`/c/${chat.id}`);
+
+							if (chat.id === $temporaryChat?.id) {
+								temporaryChat.set({
+									isTemp: true,
+									name: "新对话",
+									id: $temporaryChat?.id
+								});
+								tick();
+							}
 							if (chat.id !== chatTitleEditId) {
 								chatTitleEditId = "";
 								chatTitle = "";
-								selectStatus = [];
 							}
 							if (chat.id && !chatTitleEditId) {
-								selectStatus[i] = true;
-								loadChat(chat.id, i);
+								if (chat.isTemp) {
+									temporaryChat.set({
+										isTemp: true,
+										name: "新对话",
+										id: $temporaryChat?.id
+									});
+									chatId.set($temporaryChat?.id);
+									goto("/");
+
+									selectStatus[i] = true;
+								} else {
+									selectStatus[i] = true;
+									$temporaryChat?.id &&
+										temporaryChat.set({
+											isTemp: false,
+											name: "新对话",
+											id: $temporaryChat?.id
+										});
+									chatId.set(chat.id);
+									loadChat(chat.id, i);
+								}
 							}
 						}}
 					>
@@ -505,12 +632,13 @@
 						</div>
 					</button>
 
-					{#if chat.id === $chatId}
+					{#if chat.id === $chatId || swipedItemId === chat.id || hoveredItemId === chat.id}
 						<div class=" absolute right-[22px] top-[10px]">
 							{#if chatTitleEditId === chat.id}
 								<div class="flex self-center space-x-1.5">
 									<button
 										class=" self-center hover:text-customBlue transition"
+										use:tooltip={"确认"}
 										on:click={() => {
 											editChatTitle(chat.id, chatTitle);
 											chatTitleEditId = "";
@@ -532,6 +660,7 @@
 									</button>
 									<button
 										class=" self-center hover:text-customRed transition"
+										use:tooltip={"取消"}
 										on:click={() => {
 											chatTitleEditId = "";
 											chatTitle = "";
@@ -553,6 +682,7 @@
 								<div class="flex self-center space-x-1.5">
 									<button
 										class=" self-center hover:text-customBlue transition"
+										use:tooltip={"确认"}
 										on:click={() => {
 											deleteChat(chat.id);
 										}}
@@ -572,6 +702,7 @@
 									</button>
 									<button
 										class=" self-center hover:text-customRed transition"
+										use:tooltip={"取消"}
 										on:click={() => {
 											chatDeleteId = "";
 										}}
@@ -592,6 +723,7 @@
 								<div class="flex self-center space-x-1.5">
 									<button
 										class=" self-center hover:text-customBlue transition"
+										use:tooltip={"重命名"}
 										on:click={() => {
 											chatTitle = chat.name;
 											chatTitleEditId = chat.id;
@@ -616,6 +748,7 @@
 									</button>
 									<button
 										class=" self-center hover:text-customRed transition"
+										use:tooltip={"删除对话"}
 										on:click={() => {
 											chatDeleteId = chat.id;
 											swipedItemId = "";

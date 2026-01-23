@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { uploadFile } from "$lib/api/chat"; // 引入上传接口
 	import toast from "svelte-french-toast";
+	import Modal from "$lib/components/common/Modal.svelte";
 	export let submitPrompt: Function;
 	export let stopResponse: Function;
 	export let autoScroll = true;
@@ -13,6 +14,24 @@
 	//存储已上传成功的文件信息（用于预览和发送）
 	let selectedFiles: any[] = [];
 	let isUploading = false;
+	// 图片大图显示
+	let showImagePreview = false;
+	let previewImageUrl = "";
+	let scale = 1;
+	// 图片放大功能 最大3倍
+	const zoomIn = () => {
+		scale = Math.min(scale + 0.25, 3);
+	};
+	// 图片缩小功能 最小0.5倍
+	const zoomOut = () => {
+		scale = Math.max(scale - 0.25, 0.1);
+	};
+	const closePreview = () => {
+		showImagePreview = false;
+	};
+	$: if (!showImagePreview) {
+		scale = 1;
+	}
 	// 删除预览图片
 	const removeFile = (index: number) => {
 		selectedFiles = selectedFiles.filter((_, i) => i !== index);
@@ -51,8 +70,6 @@
 			// 假设接口返回结构中包含 url (例如 res.data.url 或 res.url)
 			// 请根据实际后端返回调整
 			const fileData = res.data;
-			console.log("res-file", res);
-
 			if (fileData.id) {
 				selectedFiles = [
 					...selectedFiles,
@@ -78,7 +95,6 @@
 	// 	await $db.addChats(chatHistory);
 	// };
 	function keyBoardDown(e: any) {
-		// console.log("keyBoardDown", e.keyCode);
 		if (e.keyCode == 13 && !e.shiftKey) {
 			e.preventDefault();
 		}
@@ -89,8 +105,6 @@
 		}
 	}
 	function InputEvent(e: any) {
-		// console.log("InputEvent", e);
-
 		if (e.target) {
 			e.target.style.height = "";
 			e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
@@ -190,11 +204,20 @@
 							<div class="mx-2 mt-2 mb-2 flex flex-wrap gap-2">
 								{#each selectedFiles as file, index}
 									<div class="relative group">
-										<img
-											src={file.url}
-											alt={file.name}
-											class="h-16 w-16 object-cover rounded-md border border-gray-200 dark:border-gray-600"
-										/>
+										<button
+											type="button"
+											class=" w-full p-0 border-0 bg-transparent cursor-pointer outline-none"
+											on:click={() => {
+												previewImageUrl = file?.url;
+												showImagePreview = true;
+											}}
+										>
+											<img
+												src={file.url}
+												alt={file.name}
+												class="h-16 w-16 object-cover rounded-md border border-gray-200 dark:border-gray-600"
+											/></button
+										>
 										<button
 											class="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 w-4 h-4 flex items-center justify-center text-xs shadow-sm hover:bg-red-600 cursor-pointer"
 											on:click={() => removeFile(index)}
@@ -337,3 +360,73 @@
 		</div>
 	</div>
 </div>
+<Modal bind:show={showImagePreview} class="set-new-bg">
+	<div class="fixed top-4 right-4 flex space-x-2 z-10">
+		<button
+			class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition shadow-sm"
+			on:click|stopPropagation={zoomIn}
+			title="放大"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="2"
+				stroke="currentColor"
+				class="w-5 h-5"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M12 4.5v15m7.5-7.5h-15"
+				/>
+			</svg>
+		</button>
+
+		<button
+			class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition shadow-sm"
+			on:click|stopPropagation={zoomOut}
+			title="缩小"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="2"
+				stroke="currentColor"
+				class="w-5 h-5"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" />
+			</svg>
+		</button>
+
+		<button
+			class="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition shadow-sm"
+			on:click|stopPropagation={closePreview}
+			title="关闭"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="2"
+				stroke="currentColor"
+				class="w-5 h-5"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M6 18L18 6M6 6l12 12"
+				/>
+			</svg>
+		</button>
+	</div>
+
+	<img
+		src={previewImageUrl}
+		alt="preview"
+		class="transition-transform duration-200 ease-in-out object-contain max-w-full max-h-[80vh]"
+		style="transform: scale({scale});margin:0 auto;"
+		draggable="false"
+	/>
+</Modal>

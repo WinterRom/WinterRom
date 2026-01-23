@@ -28,7 +28,6 @@ export const thirdLogin = async (params: any) => {
 	// console.log("token-thirdLogin", token);
 
 	// debugger;
-	console.log("params", params);
 
 	if (!params.token) {
 		params.token = getToken();
@@ -40,7 +39,6 @@ export const thirdLogin = async (params: any) => {
 		wxLogin(params)
 			.then((response: any) => {
 				const result = response.data.data;
-				console.log("result", result);
 				setToken(result.token);
 			})
 			.catch(error => {});
@@ -48,7 +46,6 @@ export const thirdLogin = async (params: any) => {
 	// debugger;
 	if (!params.token && !getToken()) {
 		showToast("登陆失败");
-		console.log("登陆失败", goto(redirectUrl), redirectUrl);
 		goto(redirectUrl);
 		redirectToSSO();
 		return;
@@ -65,8 +62,6 @@ export const thirdLogin = async (params: any) => {
 
 			// debugger;
 			if (data.menus?.length > 0) {
-				console.log("data", data);
-
 				userInfor.set(data);
 
 				userName.set(data.userName);

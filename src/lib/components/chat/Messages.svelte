@@ -305,9 +305,6 @@
 			content: content
 		};
 		const response: any = await feedbackMessage(form);
-		console.log("response", response);
-
-		console.log("message", message);
 		if (response.code === "000000") {
 			toast.success("反馈成功");
 		}
@@ -1294,7 +1291,7 @@
 			src={previewImageUrl}
 			alt="preview"
 			class="transition-transform duration-200 ease-in-out object-contain max-w-full max-h-[80vh]"
-			style="transform: scale({scale})"
+			style="transform: scale({scale});margin:0 auto;"
 			draggable="false"
 		/>
 	</Modal>

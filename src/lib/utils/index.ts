@@ -132,7 +132,6 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 			done: true,
 			answer: item.answer
 		};
-		console.log("item.feedback ", item.feedback);
 
 		lastId = assistantMsgId;
 	});

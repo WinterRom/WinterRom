@@ -2,14 +2,20 @@
 	import { v4 as uuidv4 } from "uuid";
 	import { logout } from "$lib/api/user";
 	import { goto } from "$app/navigation";
-	import { chatId, db } from "$lib/stores";
+	import { chatId, db, temporaryChat, chats } from "$lib/stores";
 	import { get } from "svelte/store";
 	import { userInfor, userName } from "$lib/stores";
 	import { onMount } from "svelte";
 	import { getToken, setToken, removeToken } from "$lib/utils/cookie";
+	import {
+		getChat,
+		updateChatName,
+		deleteConversation,
+		getChatList
+	} from "$lib/api/chat";
 	import tippy from "tippy.js";
 	const redirectUrl: any = import.meta.env.VITE_API_REDIRECT_URL;
-	export let title: string = "新小C";
+	export let title: string = "小C+";
 	let showLongOutbtn: boolean = false;
 	let userNames: string = "";
 	let username: HTMLElement;
@@ -35,6 +41,12 @@
 		removeToken();
 		goto(redirectUrl);
 	};
+	const getChatConversationsList = async () => {
+		const { data } = await getChatList();
+		// chatList = data;
+		chats.set(data);
+		// let data = JSON.parse(conversationsList);
+	};
 </script>
 <style>
 </style>
@@ -48,8 +60,19 @@
 				<button
 					class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 					on:click={async () => {
-						goto("/");
-						await chatId.set(uuidv4());
+						// 刷新后台数据列表
+						getChatConversationsList();
+						// 跳转并重置
+						// goto("/");
+						!$temporaryChat && goto("/");
+						const newId = uuidv4();
+						await chatId.set(newId);
+						// 重新生成临时会话
+						temporaryChat.set({
+							id: newId,
+							name: "新对话",
+							isTemp: true
+						});
 					}}
 				>
 					<div bind:this={newChat} class=" m-auto self-center">
@@ -70,7 +93,7 @@
 					<div
 						class=" flex-1 ml-2 self-center font-medium text-ellipsis whitespace-nowrap overflow-hidden"
 					>
-						{title != "" ? title : "新小C"}
+						{title != "" ? title : "小C+"}
 					</div>
 				</button>
 			</div>
