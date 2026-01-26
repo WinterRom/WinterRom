@@ -65,19 +65,18 @@
 						!isMobile && getChatConversationsList();
 						// 跳转并重置
 						// goto("/");
-
+						// messagesSend存在表示已有对话记录继续新对话应该重置临时记录
+						$temporaryChat?.messagesSend && temporaryChat.set(null);
 						const newId = $temporaryChat?.id || uuidv4();
 						await chatId.set(newId);
-						console.log("nav", newId);
-
+						// if($temporaryChat?.id)
 						// 重新生成临时会话
 						temporaryChat.set({
 							id: newId,
 							name: "新对话",
 							isTemp: true
 						});
-						tick();
-						console.log("nav-temporaryChat", $temporaryChat);
+						// tick();
 						goto("/");
 					}}
 				>

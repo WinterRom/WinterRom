@@ -2,33 +2,14 @@
 	import { v4 as uuidv4 } from "uuid";
 	import toast from "svelte-french-toast";
 	import { onMount, tick, onDestroy } from "svelte";
-	import { OLLAMA_API_BASE_URL } from "$lib/constants";
-	import {
-		getChat,
-		getChatSSE,
-		getConversationMessageList,
-		stopChat
-	} from "$lib/api/chat";
-	import { getToken, setToken, removeToken } from "$lib/utils/cookie";
-
-	import {
-		convertMessagesToHistory,
-		splitStream,
-		convertBackendMessagesToHistory
-	} from "$lib/utils";
+	import { getConversationMessageList, stopChat } from "$lib/api/chat";
+	import { getToken } from "$lib/utils/cookie";
+	import { convertBackendMessagesToHistory } from "$lib/utils";
 	import { goto } from "$app/navigation";
-	import {
-		models,
-		settings,
-		db,
-		chats,
-		chatId,
-		temporaryChat
-	} from "$lib/stores";
+	import { settings, chatId, temporaryChat } from "$lib/stores";
 	import Sidebar from "$lib/components/layout/Sidebar.svelte";
 	import MessageInput from "$lib/components/chat/MessageInput.svelte";
 	import Messages from "$lib/components/chat/Messages.svelte";
-	import ModelSelector from "$lib/components/chat/ModelSelector.svelte";
 	import Navbar from "$lib/components/layout/Navbar.svelte";
 	import { page } from "$app/stores";
 	import Modal from "$lib/components/common/Modal.svelte";
@@ -41,7 +22,6 @@
 	let showLeft: boolean = false;
 	let title = "";
 	let prompt = "";
-	let selectedModels = [""];
 	let messages: any = [];
 	let history: any = {
 		messages: {},
@@ -166,7 +146,6 @@
 	const loadChat = async () => {
 		await chatId.set($page.params.id);
 		conversationId = $page.params.id; // 确保 conversationId 初始化
-
 		// if (!$temporaryChat?.isTemp) {
 		// 	temporaryChat.set({
 		// 		isTemp: true,
@@ -260,7 +239,7 @@
 		await sendPromptOllama(userPrompt, parentId, _chatId, fileId);
 		// await chats.set(await $db.getChats());
 	};
-	// 深度优化版发送函数
+	// 深度优化版发送函数,文件ID为非必传参数
 	const sendPromptOllama = async (
 		userPrompt: any,
 		parentId: any,
@@ -363,8 +342,9 @@
 					try {
 						const data = JSON.parse(jsonString);
 
-						// 更新 conversationId (理论上详情页ID不变，但以防万一)
+						// 更新 conversationId，详情页ID不变，但以防万一
 						if (data.event === "workflow_started") {
+							chatMessageIfStop = true;
 							stopChatTaskId = data.task_id;
 							responseMessage.conversationId = data.conversation_id;
 							responseMessage.messageId = data.message_id;
@@ -374,6 +354,8 @@
 							) {
 								conversationId = data.conversation_id;
 							}
+							messages = messages;
+							await tick();
 						}
 
 						if (data.event === "message") {
@@ -443,9 +425,10 @@
 							}
 						}
 						if (data.event === "message_end") {
-							chatMessageIfStop = true;
+							chatMessageIfStop = false;
 							stopResponseFlag = false;
-							tick();
+							messages = messages;
+							await tick();
 						}
 						if (data.event === "error") {
 							const errText = " 发生错误";
@@ -480,6 +463,7 @@
 			isStreaming = false;
 			stopChatTaskId = "";
 			stopResponseFlag = false;
+			chatMessageIfStop = false;
 			// 确保最后的内容被渲染
 			// messages = messages;
 			await tick();
@@ -799,8 +783,11 @@
 		}
 		messages.at(-1).done = true;
 		stopResponseFlag = true;
+		chatMessageIfStop = false;
+		// messages = messages;
+		// await tick();
 	};
-
+	//重新生成答案
 	const regenerateResponse = async (message?: any) => {
 		const _chatId = JSON.parse(JSON.stringify($chatId));
 		if (messages.length != 0 && messages.at(-1).done == true) {
@@ -1028,6 +1015,7 @@
 						{submitPrompt}
 						{stopResponse}
 						{stopChatTaskId}
+						{chatMessageIfStop}
 					/>
 				</div>
 				<!-- <div class="w-full h-[54px] fixd bottom-0"> -->
@@ -1078,6 +1066,7 @@
 					{submitPrompt}
 					{stopResponse}
 					{stopChatTaskId}
+					{chatMessageIfStop}
 				/>
 				<div
 					class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"

@@ -256,11 +256,9 @@
 				on:click={async () => {
 					// 获取最新列表
 					!isMobile && getChatConversationsList();
-					// temporaryChat.set(null);
-
+					// messagesSend存在表示已有对话记录继续新对话应该重置临时记录
+					$temporaryChat?.messagesSend && temporaryChat.set(null);
 					const newId = $temporaryChat?.id || uuidv4();
-					console.log("newId小C+", newId);
-					console.log("$temporaryChat?.id ", $temporaryChat?.id);
 					await chatId.set(newId);
 					temporaryChat.set({
 						id: newId,
@@ -290,10 +288,9 @@
 					!isMobile && getChatConversationsList();
 					// 重置路由和ID
 					// goto("/");
-
+					// messagesSend存在表示已有对话记录继续新对话应该重置临时记录
+					$temporaryChat?.messagesSend && temporaryChat.set(null);
 					const newId = $temporaryChat?.id || uuidv4();
-					console.log("newId-新对话", newId);
-
 					await chatId.set(newId);
 					// 设置临时会话
 					temporaryChat.set({
@@ -302,7 +299,7 @@
 						isTemp: true
 					});
 					goto("/");
-					tick();
+					// tick();
 					if (isMobile) {
 						show = false;
 					}
@@ -575,26 +572,13 @@
 							// goto(`/c/${chat.id}`);
 							// 重新切换到新对话，显示选中背景色
 							if (chat.id === $temporaryChat?.id) {
-								console.log(
-									" 重新切换到新对话，显示选中背景色",
-									$temporaryChat
-								);
-								console.log("chatId", $chatId);
-								console.log("chat.id-重新切换到新对话", chat.id);
-
 								chatId.set(chat.id || $temporaryChat?.id);
-								console.log("chat.id-重新切换到新对话-设置-chatId", $chatId);
-
 								temporaryChat.set({
 									isTemp: true,
 									name: "新对话",
 									id: $temporaryChat?.id
 								});
-								console.log(
-									" 重新切换到新对话，显示选中背景色-设置后",
-									$temporaryChat
-								);
-								tick();
+								// tick();
 							}
 							if (chat.id !== chatTitleEditId) {
 								chatTitleEditId = "";
@@ -607,22 +591,15 @@
 									// 	name: "新对话",
 									// 	id: $temporaryChat?.id
 									// });
-									console.log("临时", $temporaryChat);
-
 									chatId.set($temporaryChat?.id);
 									goto("/");
-
 									selectStatus[i] = true;
 								} else {
-									console.log("chat.isTemp", $temporaryChat?.id);
-
 									selectStatus[i] = true;
 									if ($temporaryChat?.messagesSend) {
 										getChatConversationsList();
 										temporaryChat.set(null);
 									} else if ($temporaryChat?.id) {
-										console.log("重新设置", $temporaryChat?.id);
-
 										// 有新对话但是没开始会话就切换其它对话记录，不显示选中标签色
 										temporaryChat.set({
 											isTemp: false,
@@ -636,8 +613,6 @@
 									// 		name: "新对话",
 									// 		id: $temporaryChat?.id
 									// 	});
-									console.log("chat.id--1", chat.id);
-
 									chatId.set(chat.id);
 									loadChat(chat.id, i);
 								}

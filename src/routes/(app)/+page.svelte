@@ -523,10 +523,13 @@
 
 						// 处理 conversationId
 						if (data.event === "workflow_started") {
+							chatMessageIfStop = true;
 							stopChatTaskId = data.task_id;
 							conversationId = data.conversation_id;
 							responseMessage.conversationId = data.conversation_id;
 							responseMessage.messageId = data.message_id;
+							messages = messages;
+							await tick();
 						}
 
 						// 处理消息内容
@@ -598,8 +601,9 @@
 						}
 						if (data.event === "message_end") {
 							stopResponseFlag = false;
-							chatMessageIfStop = true;
-							tick();
+							chatMessageIfStop = false;
+							messages = messages;
+							await tick();
 						}
 						if (data.event === "error") {
 							const errorMsg = " 发生错误";
@@ -633,7 +637,7 @@
 			isStreaming = false;
 			stopChatTaskId = "";
 			stopResponseFlag = false;
-
+			chatMessageIfStop = false;
 			// 确保最后的内容被渲染
 			messages = messages;
 			await tick();
@@ -642,14 +646,6 @@
 	};
 	const submitPrompt = async (userPrompt: any, files: any = []) => {
 		if (!userPrompt) return;
-		console.log("messages.length === 0", messages.length === 0);
-		console.log("$temporaryChat", $temporaryChat);
-		console.log(
-			"$temporaryChat.id === $chatId",
-			$temporaryChat?.id === $chatId
-		);
-		console.log("$temporaryChat.id ", $temporaryChat?.id);
-		console.log("$chatId", $chatId);
 		const chatElement: any = document.getElementById("chat-textarea");
 		if (chatElement) chatElement.style.height = "";
 		// 有临时对话数据，更新name
@@ -659,16 +655,13 @@
 			$temporaryChat?.id === $chatId
 		) {
 			goto("/");
-			console.log("五对话", $temporaryChat);
 			temporaryChat.update((chat: any) => ({
 				...chat,
 				name: userPrompt,
 				messagesSend: true //新对话已经开始对话
 			}));
 		} else if (!$temporaryChat?.id) {
-			console.log("没有临时对话数据", $temporaryChat);
 			// 没有临时对话数据，当对话开始时新增临时会话数据
-
 			temporaryChat.set({
 				isTemp: true,
 				name: userPrompt,
@@ -712,6 +705,8 @@
 		await sendPrompt(userPrompt, userMessageId, _chatId, files[0]?.id);
 	};
 	const stopResponse = async () => {
+		console.log(1111 + "app");
+
 		const response: any = await stopChat({ taskId: stopChatTaskId });
 		stopChatTaskId = "";
 		if ((response.code = "000000")) {
@@ -719,8 +714,11 @@
 		}
 		messages.at(-1).done = true;
 		stopResponseFlag = true;
+		chatMessageIfStop = false;
+		// messages = messages;
+		// await tick();
 	};
-
+	//重新生成答案
 	const regenerateResponse = async (message?: any) => {
 		const _chatId = conversationId;
 		if (messages.length != 0 && messages.at(-1).done == true) {
@@ -915,6 +913,7 @@
 					{submitPrompt}
 					{stopResponse}
 					{stopChatTaskId}
+					{chatMessageIfStop}
 				/>
 			</div>
 			<!-- <div class="w-full h-[54px] fixd bottom-0"> -->
@@ -961,6 +960,7 @@
 				{submitPrompt}
 				{stopResponse}
 				{stopChatTaskId}
+				{chatMessageIfStop}
 			/>
 			<div
 				class="fixed content-right set-bg bottom-0 w-full text-sm text-center text-[#c0c0c0]"
