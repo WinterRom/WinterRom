@@ -661,7 +661,8 @@
 											<option value="" disabled selected>Select a model</option>
 										{/if}
 
-										{#each $models.filter(m => m.size != null) as model}
+										{#each $models.filter(// @ts-ignore
+											m => m.size != null) as model}
 											<option
 												value={model.name}
 												class="bg-gray-100 dark:bg-gray-700"

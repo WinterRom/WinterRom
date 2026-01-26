@@ -5,7 +5,7 @@
 	import { chatId, db, temporaryChat, chats } from "$lib/stores";
 	import { get } from "svelte/store";
 	import { userInfor, userName } from "$lib/stores";
-	import { onMount } from "svelte";
+	import { onMount, tick } from "svelte";
 	import { getToken, setToken, removeToken } from "$lib/utils/cookie";
 	import {
 		getChat,
@@ -16,6 +16,7 @@
 	import tippy from "tippy.js";
 	const redirectUrl: any = import.meta.env.VITE_API_REDIRECT_URL;
 	export let title: string = "小C+";
+	export let isMobile: boolean;
 	let showLongOutbtn: boolean = false;
 	let userNames: string = "";
 	let username: HTMLElement;
@@ -61,18 +62,23 @@
 					class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 					on:click={async () => {
 						// 刷新后台数据列表
-						getChatConversationsList();
+						!isMobile && getChatConversationsList();
 						// 跳转并重置
 						// goto("/");
-						!$temporaryChat && goto("/");
-						const newId = uuidv4();
+
+						const newId = $temporaryChat?.id || uuidv4();
 						await chatId.set(newId);
+						console.log("nav", newId);
+
 						// 重新生成临时会话
 						temporaryChat.set({
 							id: newId,
 							name: "新对话",
 							isTemp: true
 						});
+						tick();
+						console.log("nav-temporaryChat", $temporaryChat);
+						goto("/");
 					}}
 				>
 					<div bind:this={newChat} class=" m-auto self-center">

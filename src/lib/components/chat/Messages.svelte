@@ -1174,7 +1174,7 @@
 																class="{messageIdx + 1 === messages.length
 																	? 'visible'
 																	: 'invisible group-hover:visible'} p-1 rounded dark:hover:bg-gray-800 transition"
-																on:click={() => regenerateResponse()}
+																on:click={() => regenerateResponse(message)}
 																id="refesh-{message.id}"
 															>
 																<svg

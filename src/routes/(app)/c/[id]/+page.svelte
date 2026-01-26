@@ -51,6 +51,7 @@
 	let windowWidth = 0;
 	let isStreaming = false;
 	let stopChatTaskId = "";
+	let chatMessageIfStop: boolean = false;
 	$: isMobile = windowWidth <= 1040;
 	$: if (copyContent) {
 		prompt = copyContent;
@@ -161,7 +162,7 @@
 	// 		return null;
 	// 	}
 	// };
-	// 修改 loadChat，移除 $db 相关逻辑，只从接口获取
+	// 从接口获取聊天记录
 	const loadChat = async () => {
 		await chatId.set($page.params.id);
 		conversationId = $page.params.id; // 确保 conversationId 初始化
@@ -268,6 +269,7 @@
 	) => {
 		isStreaming = true;
 		stopChatTaskId = "";
+		chatMessageIfStop = false;
 		// 1. 初始化新消息对象
 		let responseMessageId = uuidv4();
 		let responseMessage: any = {
@@ -276,7 +278,12 @@
 			childrenIds: [],
 			role: "assistant",
 			content: "",
-			isShow: false
+			isShow: false,
+			messageId: "",
+			feedback: null,
+			conversationId: "",
+			query: userPrompt,
+			answer: "" // 判断是否有答案
 		};
 
 		// 2. 更新内存中的历史记录
@@ -332,9 +339,10 @@
 				const { done, value } = await reader.read();
 
 				if (done || stopResponseFlag) {
-					if (stopResponseFlag) {
+					if (stopResponseFlag && !chatMessageIfStop) {
 						if (uiMessage) uiMessage.content += " [已停止]";
 						responseMessage.content += " [已停止]";
+						responseMessage.answer = "";
 					}
 					responseMessage.done = true;
 					if (uiMessage) uiMessage.done = true;
@@ -358,6 +366,8 @@
 						// 更新 conversationId (理论上详情页ID不变，但以防万一)
 						if (data.event === "workflow_started") {
 							stopChatTaskId = data.task_id;
+							responseMessage.conversationId = data.conversation_id;
+							responseMessage.messageId = data.message_id;
 							if (
 								data.conversation_id &&
 								data.conversation_id !== conversationId
@@ -368,7 +378,7 @@
 
 						if (data.event === "message") {
 							const content = data.answer;
-
+							responseMessage.answer = data.answer;
 							const PRINT_SPEED = 30;
 
 							// 自动滚动控制
@@ -432,7 +442,11 @@
 								});
 							}
 						}
-
+						if (data.event === "message_end") {
+							chatMessageIfStop = true;
+							stopResponseFlag = false;
+							tick();
+						}
 						if (data.event === "error") {
 							const errText = " 发生错误";
 							responseMessage.content += errText;
@@ -441,6 +455,14 @@
 						}
 					} catch (e) {
 						// console.error(e);
+						responseMessage.done = true;
+						responseMessage.content = e.message || "数据处理失败";
+						if (uiMessage) {
+							uiMessage.done = true;
+							uiMessage.content = responseMessage.content;
+						}
+						messages = messages;
+						toast.error(e.message || "数据处理失败");
 					}
 				}
 			}
@@ -458,6 +480,8 @@
 			isStreaming = false;
 			stopChatTaskId = "";
 			stopResponseFlag = false;
+			// 确保最后的内容被渲染
+			// messages = messages;
 			await tick();
 
 			window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
@@ -777,7 +801,7 @@
 		stopResponseFlag = true;
 	};
 
-	const regenerateResponse = async () => {
+	const regenerateResponse = async (message?: any) => {
 		const _chatId = JSON.parse(JSON.stringify($chatId));
 		if (messages.length != 0 && messages.at(-1).done == true) {
 			messages.splice(messages.length - 1, 1);
@@ -785,7 +809,7 @@
 
 			let userMessage = messages.at(-1);
 			let userPrompt = userMessage.content;
-			await sendPrompt(userPrompt, userMessage.id, _chatId);
+			await sendPrompt(userPrompt, userMessage.id, _chatId, message?.filesId);
 		}
 	};
 	const setChatTitle = async (_chatId: any, _title: any) => {
@@ -941,9 +965,9 @@
 							on:click={async () => {
 								// getChatConversationsList()
 								// goto("/");
-								!$temporaryChat && goto("/");
+								goto("/");
 								// await chatId.set(uuidv4());
-								const newId = uuidv4();
+								const newId = $temporaryChat?.id || uuidv4();
 								await chatId.set(newId);
 								// 重新生成临时会话
 								temporaryChat.set({
@@ -1025,7 +1049,7 @@
 			<div class="sidebar-left"><Sidebar bind:show {isMobile} /></div>
 			<div class="content-right">
 				<div class="nav-bar content-right fixed py-2.5 top-0">
-					<Navbar {title} />
+					<Navbar {title} {isMobile} />
 				</div>
 				<!-- <div class=" mx-auto w-full md:px-0 mt-10">
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />

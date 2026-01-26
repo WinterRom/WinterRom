@@ -2,12 +2,12 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-04-15 17:25:18
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-21 08:59:57
+ * @LastEditTime: 2026-01-26 09:40:45
  * @FilePath: \foundesrcPro\itc_ai_self_ui\src\lib\utils\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import { v4 as uuidv4 } from "uuid";
-
+import tippy from "tippy.js";
 //////////////////////////
 // Helper functions
 //////////////////////////
@@ -130,7 +130,8 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 			role: "assistant",
 			content: item.answer || "手动停止",
 			done: true,
-			answer: item.answer
+			answer: item.answer,
+			filesId: item.message_files[0]?.upload_file_id
 		};
 
 		lastId = assistantMsgId;
@@ -138,4 +139,23 @@ export const convertBackendMessagesToHistory = (backendMessages: any[]) => {
 
 	history.currentId = lastId;
 	return history;
+};
+export const tooltip = (node: HTMLElement, content: string) => {
+	const instance = tippy(node, {
+		content: content, // 提示文字
+		placement: "bottom", // 在下方显示
+		arrow: true, // 显示小箭头
+		delay: [200, 0], // [显示延迟, 隐藏延迟] 防止划过时闪烁
+		duration: [200, 100], // 动画时长
+		touch: ["hold", 150]
+	});
+
+	return {
+		update(newContent: string) {
+			instance.setProps({ content: newContent });
+		},
+		destroy() {
+			instance.destroy();
+		}
+	};
 };

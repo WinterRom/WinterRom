@@ -21,6 +21,7 @@
 	import { userInfor, userName } from "$lib/stores";
 	import { swipe } from "$lib/utils/swipe";
 	import toast from "svelte-french-toast";
+	import { tooltip } from "$lib/utils";
 	export let show = false;
 	export let conversationId = "";
 	export let isMobile: boolean;
@@ -89,25 +90,25 @@
 		swipedItemId = ""; // 复位，关闭所有侧滑
 	}
 	// Tooltip Action
-	function tooltip(node: HTMLElement, content: string) {
-		const instance = tippy(node, {
-			content: content, // 提示文字
-			placement: "bottom", // 在下方显示
-			arrow: true, // 显示小箭头
-			delay: [200, 0], // [显示延迟, 隐藏延迟] 防止划过时闪烁
-			duration: [200, 100], // 动画时长
-			touch: ["hold", 150]
-		});
+	// function tooltip(node: HTMLElement, content: string) {
+	// 	const instance = tippy(node, {
+	// 		content: content, // 提示文字
+	// 		placement: "bottom", // 在下方显示
+	// 		arrow: true, // 显示小箭头
+	// 		delay: [200, 0], // [显示延迟, 隐藏延迟] 防止划过时闪烁
+	// 		duration: [200, 100], // 动画时长
+	// 		touch: ["hold", 150]
+	// 	});
 
-		return {
-			update(newContent: string) {
-				instance.setProps({ content: newContent });
-			},
-			destroy() {
-				instance.destroy();
-			}
-		};
-	}
+	// 	return {
+	// 		update(newContent: string) {
+	// 			instance.setProps({ content: newContent });
+	// 		},
+	// 		destroy() {
+	// 			instance.destroy();
+	// 		}
+	// 	};
+	// }
 	// function handleResize() {
 	// 	windowWidth = window.innerWidth;
 	// 	show = windowWidth > 1040;
@@ -116,6 +117,7 @@
 		const { data } = await getChatList();
 		// chatList = data;
 		chats.set(data);
+		// temporaryChat.set(null);
 		// let data = JSON.parse(conversationsList);
 	};
 	const loadChat = async (id: any, i: number) => {
@@ -123,7 +125,7 @@
 
 		show = window.innerWidth > 1040;
 		selectStatus[i] = true;
-		// temporaryChat.set(null);
+		$temporaryChat?.messagesSend && temporaryChat.set(null);
 		await chatId.set(id);
 		goto(`/c/${id}`);
 	};
@@ -135,6 +137,7 @@
 				name: name,
 				isTemp: true
 			});
+			swipedItemId = "";
 			toast.success("修改成功");
 		} else {
 			const query: any = {
@@ -147,6 +150,7 @@
 				: toast.error(data.message);
 			getChatConversationsList();
 			chatTitle = "";
+			swipedItemId = "";
 		}
 	};
 
@@ -154,11 +158,13 @@
 		if ($temporaryChat?.id === id) {
 			temporaryChat.set(null);
 			toast.success("删除成功");
+			swipedItemId = "";
 		} else {
 			const data: any = await deleteConversation({ conversationId: id });
 			data.code === "000000"
 				? toast.success(data.message)
 				: toast.error(data.message);
+			swipedItemId = "";
 		}
 		getChatConversationsList();
 		goto("/");
@@ -250,8 +256,11 @@
 				on:click={async () => {
 					// 获取最新列表
 					!isMobile && getChatConversationsList();
-					!$temporaryChat && goto("/");
-					const newId = uuidv4();
+					// temporaryChat.set(null);
+
+					const newId = $temporaryChat?.id || uuidv4();
+					console.log("newId小C+", newId);
+					console.log("$temporaryChat?.id ", $temporaryChat?.id);
 					await chatId.set(newId);
 					temporaryChat.set({
 						id: newId,
@@ -261,6 +270,7 @@
 					if (isMobile) {
 						show = false;
 					}
+					goto("/");
 				}}
 			>
 				<div class="flex self-center">
@@ -280,8 +290,10 @@
 					!isMobile && getChatConversationsList();
 					// 重置路由和ID
 					// goto("/");
-					!$temporaryChat && goto("/");
-					const newId = uuidv4();
+
+					const newId = $temporaryChat?.id || uuidv4();
+					console.log("newId-新对话", newId);
+
 					await chatId.set(newId);
 					// 设置临时会话
 					temporaryChat.set({
@@ -289,6 +301,8 @@
 						name: "新对话",
 						isTemp: true
 					});
+					goto("/");
+					tick();
 					if (isMobile) {
 						show = false;
 					}
@@ -559,13 +573,27 @@
 							selectStatus = [];
 							selectStatus.length = $chats.length + ($temporaryChat ? 1 : 0);
 							// goto(`/c/${chat.id}`);
-
+							// 重新切换到新对话，显示选中背景色
 							if (chat.id === $temporaryChat?.id) {
+								console.log(
+									" 重新切换到新对话，显示选中背景色",
+									$temporaryChat
+								);
+								console.log("chatId", $chatId);
+								console.log("chat.id-重新切换到新对话", chat.id);
+
+								chatId.set(chat.id || $temporaryChat?.id);
+								console.log("chat.id-重新切换到新对话-设置-chatId", $chatId);
+
 								temporaryChat.set({
 									isTemp: true,
 									name: "新对话",
 									id: $temporaryChat?.id
 								});
+								console.log(
+									" 重新切换到新对话，显示选中背景色-设置后",
+									$temporaryChat
+								);
 								tick();
 							}
 							if (chat.id !== chatTitleEditId) {
@@ -574,23 +602,42 @@
 							}
 							if (chat.id && !chatTitleEditId) {
 								if (chat.isTemp) {
-									temporaryChat.set({
-										isTemp: true,
-										name: "新对话",
-										id: $temporaryChat?.id
-									});
+									// temporaryChat.set({
+									// 	isTemp: true,
+									// 	name: "新对话",
+									// 	id: $temporaryChat?.id
+									// });
+									console.log("临时", $temporaryChat);
+
 									chatId.set($temporaryChat?.id);
 									goto("/");
 
 									selectStatus[i] = true;
 								} else {
+									console.log("chat.isTemp", $temporaryChat?.id);
+
 									selectStatus[i] = true;
-									$temporaryChat?.id &&
+									if ($temporaryChat?.messagesSend) {
+										getChatConversationsList();
+										temporaryChat.set(null);
+									} else if ($temporaryChat?.id) {
+										console.log("重新设置", $temporaryChat?.id);
+
+										// 有新对话但是没开始会话就切换其它对话记录，不显示选中标签色
 										temporaryChat.set({
 											isTemp: false,
 											name: "新对话",
 											id: $temporaryChat?.id
 										});
+									}
+									// $temporaryChat?.id &&
+									// 	temporaryChat.set({
+									// 		isTemp: false,
+									// 		name: "新对话",
+									// 		id: $temporaryChat?.id
+									// 	});
+									console.log("chat.id--1", chat.id);
+
 									chatId.set(chat.id);
 									loadChat(chat.id, i);
 								}
@@ -727,7 +774,7 @@
 										on:click={() => {
 											chatTitle = chat.name;
 											chatTitleEditId = chat.id;
-											swipedItemId = "";
+											// swipedItemId = "";
 											// editChatTitle(chat.id, 'a');
 										}}
 									>
@@ -751,7 +798,7 @@
 										use:tooltip={"删除对话"}
 										on:click={() => {
 											chatDeleteId = chat.id;
-											swipedItemId = "";
+											// swipedItemId = "";
 										}}
 									>
 										<svg

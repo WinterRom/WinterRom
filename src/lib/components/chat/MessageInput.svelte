@@ -9,10 +9,11 @@
 	export let messages: any = [];
 	export let isMobile: boolean;
 	export let stopChatTaskId: any = "";
+	export let selectedFiles: any = [];
 	let importFileInputElement: any;
 	let importFiles: any;
 	//存储已上传成功的文件信息（用于预览和发送）
-	let selectedFiles: any[] = [];
+
 	let isUploading = false;
 	// 图片大图显示
 	let showImagePreview = false;
@@ -34,7 +35,7 @@
 	}
 	// 删除预览图片
 	const removeFile = (index: number) => {
-		selectedFiles = selectedFiles.filter((_, i) => i !== index);
+		selectedFiles = selectedFiles.filter((_: any, i: any) => i !== index);
 	};
 	// 监听文件选择，一旦选择立即上传
 	$: if (importFiles && importFiles.length > 0) {

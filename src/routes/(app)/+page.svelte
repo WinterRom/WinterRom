@@ -41,6 +41,7 @@
 	let stopChatTaskId = "";
 	let conversationId: string = "";
 	let chatMessageIfStop: boolean = false;
+	let selectedFiles: any = [];
 	$: if (copyContent) {
 		prompt = copyContent;
 		tick();
@@ -70,7 +71,7 @@
 		// await tick();
 	}
 	onMount(async () => {
-		await chatId.set(uuidv4());
+		// await chatId.set(uuidv4());
 		chatId.subscribe(async () => {
 			await initNewChat();
 		});
@@ -596,7 +597,9 @@
 							}
 						}
 						if (data.event === "message_end") {
+							stopResponseFlag = false;
 							chatMessageIfStop = true;
+							tick();
 						}
 						if (data.event === "error") {
 							const errorMsg = " 发生错误";
@@ -639,19 +642,41 @@
 	};
 	const submitPrompt = async (userPrompt: any, files: any = []) => {
 		if (!userPrompt) return;
-
+		console.log("messages.length === 0", messages.length === 0);
+		console.log("$temporaryChat", $temporaryChat);
+		console.log(
+			"$temporaryChat.id === $chatId",
+			$temporaryChat?.id === $chatId
+		);
+		console.log("$temporaryChat.id ", $temporaryChat?.id);
+		console.log("$chatId", $chatId);
 		const chatElement: any = document.getElementById("chat-textarea");
 		if (chatElement) chatElement.style.height = "";
+		// 有临时对话数据，更新name
 		if (
 			messages.length === 0 &&
 			$temporaryChat &&
-			$temporaryChat.id === $chatId
+			$temporaryChat?.id === $chatId
 		) {
+			goto("/");
+			console.log("五对话", $temporaryChat);
 			temporaryChat.update((chat: any) => ({
 				...chat,
-				name: userPrompt
+				name: userPrompt,
+				messagesSend: true //新对话已经开始对话
 			}));
+		} else if (!$temporaryChat?.id) {
+			console.log("没有临时对话数据", $temporaryChat);
+			// 没有临时对话数据，当对话开始时新增临时会话数据
+
+			temporaryChat.set({
+				isTemp: true,
+				name: userPrompt,
+				id: $temporaryChat?.id || uuidv4(),
+				messagesSend: true //新对话已经开始对话
+			});
 		}
+
 		// 1. 生成用户消息并保存到 history
 		let userMessageId = uuidv4();
 		let userMessage: any = {
@@ -696,14 +721,19 @@
 		stopResponseFlag = true;
 	};
 
-	const regenerateResponse = async () => {
+	const regenerateResponse = async (message?: any) => {
 		const _chatId = conversationId;
 		if (messages.length != 0 && messages.at(-1).done == true) {
 			messages.splice(messages.length - 1, 1);
 			messages = messages;
 			let userMessage = messages.at(-1);
 			let userPrompt = userMessage.content;
-			await sendPrompt(userPrompt, userMessage.id, _chatId);
+			await sendPrompt(
+				userPrompt,
+				userMessage.id,
+				_chatId,
+				selectedFiles[0]?.id
+			);
 		}
 	};
 	const setChatTitle = async (_chatId: any, _title: any) => {
@@ -821,8 +851,8 @@
 						class=" cursor-pointer p-1 flex dark:hover:bg-gray-700 rounded-lg transition"
 						on:click={async () => {
 							// goto("/");
-							!$temporaryChat && goto("/");
-							const newId = uuidv4();
+							goto("/");
+							const newId = $temporaryChat?.id || uuidv4();
 							await chatId.set(newId);
 							// 重新生成临时会话
 							temporaryChat.set({
@@ -879,6 +909,7 @@
 				<MessageInput
 					bind:prompt
 					bind:autoScroll
+					bind:selectedFiles
 					{isMobile}
 					{messages}
 					{submitPrompt}
@@ -903,7 +934,9 @@
 	<div class="min-h-screen w-full flex justify-center bgcolor">
 		<div class="sidebar-left"><Sidebar bind:show {isMobile} /></div>
 		<div class="content-right set-input-width" id="setInputWidth">
-			<div class="nav-bar content-right fixed top-0"><Navbar {title} /></div>
+			<div class="nav-bar content-right fixed top-0">
+				<Navbar {title} {isMobile} />
+			</div>
 			<!-- <div class=" mx-auto w-full md:px-0 mt-10">
 		<ModelSelector bind:selectedModels disabled={messages.length > 0} />
 	</div> -->
@@ -922,6 +955,7 @@
 			<MessageInput
 				bind:prompt
 				bind:autoScroll
+				bind:selectedFiles
 				{isMobile}
 				{messages}
 				{submitPrompt}
