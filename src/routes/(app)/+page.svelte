@@ -602,6 +602,7 @@
 						if (data.event === "message_end") {
 							stopResponseFlag = false;
 							chatMessageIfStop = false;
+							stopChatTaskId = "";
 							messages = messages;
 							await tick();
 						}

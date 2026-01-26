@@ -1,10 +1,10 @@
 /*
  * @Author: Winter Rom
  * @Date: 2025-01-21 14:38:03
- * @LastEditTime: 2025-04-17 11:10:25
- * @LastEditors: 罗文涛 luo_wt@hisuntech.com
+ * @LastEditTime: 2026-01-26 16:52:24
+ * @LastEditors: your name
  * @Description:
- * @FilePath: \foundesrc\ollama-webui\src\lib\constants.ts
+ * @FilePath: \foundesrc\itc_ai_self_ui\src\lib\constants.ts
  */
 // export const OLLAMA_API_BASE_URL = `http://100.119.1.141:11434/api`;
 // export const OLLAMA_API_BASE_URL = `http://100.119.0.155:11434/api`;

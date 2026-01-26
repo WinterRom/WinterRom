@@ -427,6 +427,7 @@
 						if (data.event === "message_end") {
 							chatMessageIfStop = false;
 							stopResponseFlag = false;
+							stopChatTaskId = "";
 							messages = messages;
 							await tick();
 						}
