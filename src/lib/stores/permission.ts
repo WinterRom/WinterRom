@@ -2,7 +2,7 @@
  * @Author: 罗文涛 luo_wt@hisuntech.com
  * @Date: 2025-03-04 10:25:25
  * @LastEditors: 罗文涛 luo_wt@hisuntech.com
- * @LastEditTime: 2026-01-19 09:10:51
+ * @LastEditTime: 2026-03-18 15:44:54
  * @FilePath: \foundesrcPro\ollama-webui\src\lib\stores\permission.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -27,22 +27,26 @@ import { logout } from "$lib/api/user";
 export const thirdLogin = async (params: any) => {
 	// console.log("token-thirdLogin", token);
 
+	console.log("params-thirdLogin", params);
+	if (params.code) {
+		// debugger;
+		wxLogin(params)
+			.then((response: any) => {
+				const result = response.data.data;
+				console.log("result", result);
+				// debugger;
+				setToken(result.token);
+			})
+			.catch(error => {});
+	}
 	// debugger;
-
 	if (!params.token) {
 		params.token = getToken();
 	} else {
 		setToken(params.token);
 	}
 	// console.log("getToken()", getToken());
-	if (params.code) {
-		wxLogin(params)
-			.then((response: any) => {
-				const result = response.data.data;
-				setToken(result.token);
-			})
-			.catch(error => {});
-	}
+
 	// debugger;
 	if (!params.token && !getToken()) {
 		showToast("登陆失败");

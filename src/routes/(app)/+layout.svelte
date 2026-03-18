@@ -3,7 +3,7 @@
 	import { openDB, deleteDB } from "idb";
 	import { onMount, tick } from "svelte";
 	import { goto } from "$app/navigation";
-
+	import { page } from "$app/stores";
 	import {
 		info,
 		showSettings,
@@ -16,7 +16,12 @@
 		userName
 	} from "$lib/stores";
 	// import { getUserInfoFromToken } from "$lib/api/api";
-	import { getToken, setToken, removeToken } from "$lib/utils/cookie";
+	import {
+		getToken,
+		setToken,
+		removeToken,
+		setChannel
+	} from "$lib/utils/cookie";
 	import SettingsModal from "$lib/components/chat/SettingsModal.svelte";
 	import Sidebar from "$lib/components/layout/Sidebar.svelte";
 	import toast from "svelte-french-toast";
@@ -28,6 +33,8 @@
 	let requiredOllamaVersion = "0.1.16";
 	let loaded = false;
 	let tokens: any = "";
+	let channels: string = "";
+	$: param = $page.url.searchParams;
 	onMount(async () => {
 		// if (import.meta.env.MODE === "development") {
 		// }
@@ -39,12 +46,28 @@
 		await db.set(_db);
 		// await setOllamaVersion(await getOllamaVersion());
 		await tick();
+		console.log(1);
 		const params = tools.parseUrl(window.top?.location.search || "");
-		const { token, code, redirect } = params;
+		console.log(2);
+		console.log("window.top?.location.search", window.top?.location.search);
+		console.log("window.top?.location", window.top?.location);
+		const { token, code, redirect, channel } = params;
+		console.log(3);
+		channels = channel;
+		console.log("channel-layout", channel);
+		console.log("param", param);
+		console.log(4);
 		// console.log("get", getToken());
 		// console.log("token", token);
 		// debugger;
-		await thirdLogin(params);
+		channel && setChannel(channel);
+		if (window.top?.location.href) {
+			console.log(5);
+
+			window.open(window.top?.location.href);
+			await thirdLogin(params);
+		}
+
 		if (token || getToken()) {
 			loaded = true;
 		}
@@ -175,6 +198,12 @@
 <style>
 	.bgcolor {
 		background-color: #f4f6fc;
+	}
+	@media (prefers-color-scheme: dark) {
+		.bgcolor {
+			background-color: #676874;
+			/* padding-top: 20px; */
+		}
 	}
 </style>
 {#if loaded}
